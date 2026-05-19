@@ -924,6 +924,7 @@ async function startAnalysis() {
   const views = document.getElementById('yt-views').value;
   const likes = document.getElementById('yt-likes').value;
   const comments = document.getElementById('yt-comments').value;
+  const comment_count = document.getElementById('yt-comment-count').value;
 
   document.getElementById('analysis-divider').style.display = 'block';
   document.getElementById('analysis-section').style.display = 'block';
@@ -933,189 +934,59 @@ async function startAnalysis() {
   document.getElementById('analysis-section').scrollIntoView({ behavior: 'smooth' });
 
   setProgress(10, 'Leyendo archivo de video...');
-  appendLog('<span class="system">→ Cargando video para análisis...</span>\n');
+  appendLog('<span class="system">→ Cargando video...</span>\n');
 
-  // Convert video to base64
   const videoBase64 = await fileToBase64(currentVideoFile);
   const mimeType = currentVideoFile.type || 'video/mp4';
 
-  setProgress(25, 'Enviando a la IA para análisis visual y narrativo...');
-  appendLog('<span class="system">→ Enviando a Claude para análisis profundo...</span>\n');
+  setProgress(30, 'Enviando al servidor para análisis...');
+  appendLog('<span class="system">→ Enviando a Claude vía backend...</span>\n');
 
-  const glosario = DB.getGlosario();
-  const glosarioStr = Object.entries(glosario).length > 0
-    ? 'Glosario conocido de Javier: ' + Object.entries(glosario).map(([k,v]) => `"${k}" = ${v}`).join(', ')
-    : 'No hay glosario previo todavía.';
-
-  const videosAnalizados = DB.getVideos();
-  const contextPrevio = videosAnalizados.length > 0
-    ? `Ya analizaste ${videosAnalizados.length} video(s) anteriores. Patrones identificados: ${DB.getPatrones().join(', ') || 'ninguno aún'}.`
-    : 'Este es el primer video analizado.';
-
-  const prompt = `Sos un analizador experto del creador de contenido Javier Romero, conocido como "Joyería Sudaca". 
-
-CONTEXTO DEL CREADOR:
-Javier es joyero argentino con ~105K suscriptores en YouTube y ~170K seguidores totales. Sus Shorts son famosos por:
-- Sarcasmo e ironía: dice una cosa y muestra otra, o nombra las cosas de forma absurda y grandilocuente
-- Nombres inventados para materiales reales (ej: bórax = "sal del himalaya" o "lágrimas de ángel", ácido nítrico = "bebida de los pueblos nobles", lima = "supositorio del joyero")
-- Los nombres NO son siempre iguales, varían. A veces usa uno, a veces otro, a veces inventa uno nuevo
-- Humor de taller: chistes sobre herramientas, metales, procesos químicos
-- Frases características como "porque esto es joyería sudaca papá"
-- Cuarta pared: habla directo a cámara, rompe el formato
-- Anticlímax: construye expectativa y remata con algo absurdo o mundano
-- Resignación activa: acepta lo malo del proceso como si fuera normal
-
-${glosarioStr}
-${contextPrevio}
-
-DATOS DEL VIDEO A ANALIZAR:
-URL YouTube: ${url}
-Views: ${views || 'no proporcionado'}
-Likes: ${likes || 'no proporcionado'}
-Comentarios del video:
-${comments || 'No se proporcionaron comentarios.'}
-
-TU TAREA - Analizá el video con MÁXIMO DETALLE. Seguí exactamente esta estructura:
-
-## ANÁLISIS VISUAL
-Describí en detalle qué se ve: materiales, herramientas, procesos, ambiente del taller, acciones específicas momento a momento.
-
-## ANÁLISIS DEL DISCURSO
-Transcribí y analizá exactamente qué dice Javier, frase por frase. Identificá el ritmo, las pausas, los énfasis.
-
-## CRUCES VISUAL/VERBAL (CRÍTICO)
-Identificá cada momento donde hay contradicción, ironía o humor entre lo que se ve y lo que se dice. Explicá el mecanismo del chiste o recurso en cada caso.
-
-## ESTRUCTURA NARRATIVA
-- Gancho de apertura (primeros 3 segundos): ¿cómo engancha?
-- Desarrollo: ¿cómo mantiene la atención?
-- Remate/cierre: ¿cómo termina?
-
-## ANÁLISIS DE COMENTARIOS
-Si hay comentarios, analizá: ¿qué les resonó? ¿Comentan sobre algo visual, algo que dijo, un nombre inventado específico? ¿Qué emociones expresan?
-
-## GLOSARIO DETECTADO
-Lista cualquier nombre inventado, frase especial o recurso lingüístico que uses en este video que NO esté en el glosario previo. Formato: TÉRMINO_USADO → qué es realmente
-
-## PATRONES REPLICABLES
-¿Qué recursos de este video tienen potencial de replicarse en otros contextos? ¿Por qué funcionaron?
-
-## PREGUNTAS PARA JAVIER
-Si hay algo que no entendiste, que no quedó claro, o donde necesitás confirmación humana para catalogar correctamente, listalo como preguntas concretas. Pueden ser sobre:
-- Un nombre que usó y no sabés qué es exactamente
-- Un chiste que no terminás de entender el contexto
-- Si un recurso específico fue intencional o accidental
-- Si algo que no quedó claro en el video fue así a propósito
-Formato: PREGUNTA_N: [tu pregunta específica]
-
-Sé exhaustivo. Este análisis queda guardado permanentemente. El video se descarta después.`;
+  const glosario = await DB.getGlosario();
+  const patrones = await DB.getPatrones();
+  const contextVideos = await DB.getVideos();
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(`${API}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'video',
-              source: {
-                type: 'base64',
-                media_type: mimeType,
-                data: videoBase64
-              }
-            },
-            { type: 'text', text: prompt }
-          ]
-        }]
+        videoBase64,
+        mimeType,
+        url, title, views, likes, comment_count, comments,
+        glosario, patrones, contextVideos
       })
     });
 
     setProgress(75, 'Procesando análisis...');
-
     const data = await response.json();
 
     if (data.error) {
-      // Fallback: analyze without video (text only)
-      appendLog(`<span class="system">→ Analizando sin video (limitación de formato)...</span>\n`);
-      await analyzeTextOnly(url, views, likes, comments, glosarioStr, contextPrevio);
+      appendLog(`<span class="system">→ Error en análisis: ${data.error}</span>\n`);
       return;
     }
 
-    const analysisText = data.content[0].text;
+    const analysisText = data.analysis;
     setProgress(90, 'Extrayendo insights...');
 
     currentAnalysisData = {
-      url,
-      views: parseInt(views) || 0,
-      likes: parseInt(likes) || 0,
-      comments,
-      analysis: analysisText,
-      timestamp: new Date().toISOString()
+      url, title, views: parseInt(views)||0, likes: parseInt(likes)||0,
+      comment_count: parseInt(comment_count)||0, comments,
+      analysis: analysisText, timestamp: new Date().toISOString()
     };
 
     appendLog(formatAnalysisForLog(analysisText));
-
-    // Extract questions
     pendingQuestions = extractQuestions(analysisText);
+    setProgress(100, '✓ Análisis completo');
 
-    setProgress(100, 'Análisis completo');
-
-    if (pendingQuestions.length > 0) {
-      showQuestions(pendingQuestions);
-    } else {
-      finalizeAndSave();
-    }
+    if (pendingQuestions.length > 0) showQuestions(pendingQuestions);
+    else finalizeAndSave();
 
   } catch (err) {
     appendLog(`<span class="system">Error: ${err.message}</span>\n`);
-    // Fallback to text analysis
-    await analyzeTextOnly(url, views, likes, comments, glosarioStr, contextPrevio);
-  }
-}
-
-async function analyzeTextOnly(url, views, likes, comments, glosarioStr, contextPrevio) {
-  // Text-only analysis when video can't be processed
-  const prompt = `Sos un analizador experto del creador "Joyería Sudaca" (Javier Romero).
-
-${glosarioStr}
-${contextPrevio}
-
-Video URL: ${url}
-Views: ${views || 'no proporcionado'}, Likes: ${likes || 'no proporcionado'}
-
-Comentarios:
-${comments || 'No proporcionados.'}
-
-Basándote en los comentarios y la URL, hacé el mejor análisis posible de qué tipo de contenido es este video y qué funcionó. 
-Generá las mismas secciones que normalmente harías (ANÁLISIS DEL DISCURSO inferido de comentarios, PATRONES REPLICABLES, GLOSARIO DETECTADO si aparece en comentarios, PREGUNTAS PARA JAVIER sobre el video).
-Aclará que el análisis visual no fue posible y hacé preguntas específicas para que Javier complete la información del video.`;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    const analysisText = data.content[0].text;
-
-    currentAnalysisData = { url, views: parseInt(views)||0, likes: parseInt(likes)||0, comments, analysis: analysisText, timestamp: new Date().toISOString() };
-    appendLog(formatAnalysisForLog(analysisText));
-    pendingQuestions = extractQuestions(analysisText);
-    setProgress(100, 'Análisis completo');
-    if (pendingQuestions.length > 0) showQuestions(pendingQuestions);
-    else finalizeAndSave();
-  } catch(err) {
-    appendLog(`<span class="system">Error en análisis: ${err.message}</span>`);
+    document.getElementById('btn-analyze').disabled = false;
+    document.getElementById('btn-analyze').textContent = '▶ ANALIZAR VIDEO';
+    document.getElementById('btn-analyze').style.background = 'var(--accent)';
   }
 }
 
@@ -1164,17 +1035,13 @@ ${answers.map(a => `P: ${a.question}\nR: ${a.answer}`).join('\n\n')}
 Actualizá el GLOSARIO DETECTADO y los PATRONES REPLICABLES incorporando estas respuestas. Devolvé solo las dos secciones actualizadas.`;
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${API}/refine`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: updatePrompt }]
-        })
+        body: JSON.stringify({ analysis: currentAnalysisData.analysis, answers })
       });
       const data = await response.json();
-      currentAnalysisData.analysis += '\n\n## ACTUALIZACIÓN POST-RESPUESTAS\n' + data.content[0].text;
+      currentAnalysisData.analysis += '\n\n## ACTUALIZACIÓN POST-RESPUESTAS\n' + data.refined;
       currentAnalysisData.answers = answers;
     } catch(e) {}
   }
@@ -1258,57 +1125,20 @@ async function generateCopy() {
   const glosario = await DB.getGlosario();
   const patrones = await DB.getPatrones();
 
-  const contextVideos = videos.slice(-5).map(v => {
-    const shortAnalysis = v.analysis ? v.analysis.substring(0, 800) : '';
-    return `Video (${v.views?.toLocaleString() || '?'} views, ${v.likes?.toLocaleString() || '?'} likes):\n${shortAnalysis}`;
-  }).join('\n\n---\n\n');
-
-  const prompt = `Sos el asistente creativo de Javier "Joyería Sudaca" Romero.
-
-CONOCIMIENTO ACUMULADO DE JAVIER:
-
-Glosario (nombres que usa para las cosas):
-${Object.entries(glosario).map(([k,v]) => `"${k}" = ${v}`).join('\n') || 'En construcción'}
-
-Patrones que funcionan en sus videos:
-${patrones.join('\n') || 'En construcción'}
-
-ANÁLISIS DE VIDEOS ANTERIORES (los más recientes):
-${contextVideos}
-
-NUEVO VIDEO A GENERAR:
-Descripción: ${description}
-Momento del proceso: ${momento}
-Tono preferido: ${tono}
-
-GENERÁ 3 OPCIONES DE COPY para este video. Cada opción debe:
-1. Usar el estilo de Javier (sarcasmo, nombres inventados, estructura narrativa probada)
-2. NO repetir frases exactas de videos anteriores, sino replicar el MECANISMO
-3. Si aplica un nombre inventado para algo, que sea NUEVO o una variación no usada
-4. Incluir: gancho de apertura + desarrollo + remate/cierre
-5. Señalar qué patrón o recurso está usando en cada opción
-
-Para cada opción indicá:
-- OPCIÓN_N: [nombre del enfoque]
-- PATRÓN USADO: [qué mecanismo replica y por qué probablemente funcione]
-- COPY COMPLETO: [el guión/copy]
-- NOMBRES SUGERIDOS: [si hay materiales que nombrar, sugerí 2-3 variantes nuevas]`;
+  const contextVideos = videos.slice(-5).map(v => ({
+    views: v.views, likes: v.likes,
+    analysis: v.analysis ? v.analysis.substring(0, 800) : ''
+  }));
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch(`${API}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ description, momento, tono, glosario, patrones, contextVideos: videos })
     });
 
     const data = await response.json();
-    const text = data.content[0].text;
-
-    renderCopyResults(text);
+    renderCopyResults(data.copy || data.error);
   } catch(err) {
     document.getElementById('gen-results').innerHTML = `<div style="color: var(--accent); font-size: 12px;">Error: ${err.message}</div>`;
   }
