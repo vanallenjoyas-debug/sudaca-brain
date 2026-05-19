@@ -285,7 +285,12 @@ textarea.input-field { resize: vertical; min-height: 80px; }
     </div>
     <div id="modal-analysis" class="modal-content"></div>
     <div id="modal-comments" class="modal-content" style="display:none;"></div>
-    <div id="modal-copy" class="modal-content" style="display:none;"></div>
+    <div id="modal-copy" class="modal-content" style="display:none;white-space:pre-wrap;" contenteditable="false"></div>
+    <div id="copy-edit-bar" style="display:none;gap:8px;margin-top:10px;align-items:center;">
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;" onclick="toggleEditCopy(this)">✏ EDITAR</button>
+      <button class="btn btn-primary" style="font-size:10px;padding:5px 12px;width:auto;margin:0;display:none;" id="save-copy-btn" onclick="saveCopy()">GUARDAR COPY</button>
+      <span id="copy-save-status" style="font-size:10px;color:var(--success);"></span>
+    </div>
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-danger" id="modal-delete-btn">ELIMINAR VIDEO</button>
       <a id="modal-yt-link" href="#" target="_blank" class="btn btn-ghost" style="font-size:10px;text-decoration:none;">VER EN YOUTUBE ↗</a>
@@ -362,6 +367,12 @@ dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over
 // ANALYSIS
 async function startAnalysis(){
   const url=document.getElementById('yt-url').value.trim();
+
+  // Auto-fetch if comments empty
+  if(!document.getElementById('yt-comments').value.trim()) {
+    await fetchYT();
+  }
+
   const title=document.getElementById('yt-title').value.trim();
   const views=document.getElementById('yt-views').value;
   const likes=document.getElementById('yt-likes').value;
@@ -502,18 +513,71 @@ function openModal(id){
     ce.innerHTML=lines.map(line=>{const m=line.match(/\[(\d+) likes\] ([^:]+): (.+)/s);return m?`<div class="comment-item"><div class="comment-likes">❤️ ${parseInt(m[1]).toLocaleString()} likes</div><div class="comment-text">${m[3]}</div><div class="comment-author">— ${m[2]}</div></div>`:`<div class="comment-item"><div class="comment-text">${line}</div></div>`}).join('');
   }else{ce.innerHTML='<div style="color:var(--text-dim);font-size:12px;">Sin comentarios guardados.</div>'}
   document.getElementById('modal-copy').textContent=video.copy_original||'Sin copy original guardado.';
+  document.getElementById('modal-copy').setAttribute('data-video-id', id);
+  document.getElementById('modal-copy').setAttribute('data-original', video.copy_original||'');
   document.getElementById('modal-delete-btn').onclick=()=>{deleteVideo(id);closeModal()};
   switchTab('analysis',document.querySelector('.modal-tab'));
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModalClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+
+function toggleEditCopy(btn){
+  const el=document.getElementById('modal-copy');
+  const saveBtn=document.getElementById('save-copy-btn');
+  const isEditing=el.contentEditable==='true';
+  if(isEditing){
+    el.contentEditable='false';
+    el.style.border='none';
+    el.style.background='transparent';
+    btn.textContent='✏ EDITAR';
+    saveBtn.style.display='none';
+  } else {
+    el.contentEditable='true';
+    el.style.border='1px solid var(--accent2)';
+    el.style.background='var(--surface2)';
+    el.style.padding='12px';
+    el.focus();
+    btn.textContent='CANCELAR';
+    saveBtn.style.display='inline-block';
+  }
+}
+
+async function saveCopy(){
+  const el=document.getElementById('modal-copy');
+  const id=parseInt(el.getAttribute('data-video-id'));
+  const newCopy=el.textContent.trim();
+  const statusEl=document.getElementById('copy-save-status');
+
+  statusEl.textContent='Guardando...';
+
+  // Find video and update
+  const videos=await DB.getVideos();
+  const video=videos.find(v=>v.id===id);
+  if(!video){statusEl.textContent='Error: video no encontrado';return}
+
+  video.copy_original=newCopy;
+  await DB.saveVideo(video);
+
+  // Update cache
+  if(window._cv){const cv=window._cv.find(v=>v.id===id);if(cv)cv.copy_original=newCopy;}
+  cachedVideos=cachedVideos.map(v=>v.id===id?{...v,copy_original:newCopy}:v);
+
+  el.contentEditable='false';
+  el.style.border='none';
+  el.style.background='transparent';
+  document.querySelector('#copy-edit-bar .btn-ghost').textContent='✏ EDITAR';
+  document.getElementById('save-copy-btn').style.display='none';
+  statusEl.textContent='✓ Copy guardado';
+  setTimeout(()=>statusEl.textContent='',3000);
+}
 function switchTab(tab,btn){
   document.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   document.getElementById('modal-analysis').style.display=tab==='analysis'?'block':'none';
   document.getElementById('modal-comments').style.display=tab==='comments'?'block':'none';
   document.getElementById('modal-copy').style.display=tab==='copy'?'block':'none';
+  document.getElementById('copy-edit-bar').style.display=tab==='copy'?'flex':'none';
 }
 
 // GENERATE COPY
