@@ -353,6 +353,39 @@
   .status-analyzed { color: var(--success); border-color: var(--success); }
   .status-pending { color: var(--accent2); border-color: var(--accent2); }
 
+  .video-card-inner {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .video-thumb {
+    width: 90px;
+    height: 160px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  .video-thumb-placeholder {
+    width: 90px;
+    height: 160px;
+    flex-shrink: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: var(--text-dim);
+  }
+
+  .video-card-body { flex: 1; min-width: 0; }
+
+  .filter-btn { font-size: 10px; padding: 6px 12px; }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(233,69,96,0.1); }
+
   /* Sidebar */
   .sidebar-title {
     font-size: 10px;
@@ -611,6 +644,12 @@
     <div class="screen" id="screen-library">
       <div class="section-title">BIBLIOTECA DE VIDEOS</div>
       <div class="section-sub">Todos los videos analizados y su conocimiento acumulado</div>
+      <div style="display:flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button class="btn btn-ghost filter-btn active" onclick="setFilter('views', this)">🔥 Más viral</button>
+        <button class="btn btn-ghost filter-btn" onclick="setFilter('likes', this)">❤️ Más likes</button>
+        <button class="btn btn-ghost filter-btn" onclick="setFilter('comment_count', this)">💬 Más comentarios</button>
+        <button class="btn btn-ghost filter-btn" onclick="setFilter('timestamp', this)">🕐 Más reciente</button>
+      </div>
       <div id="video-list"></div>
     </div>
 
@@ -1288,38 +1327,72 @@ function renderCopyResults(text) {
 // ============================================================
 // RENDER
 // ============================================================
-async function renderLibrary() {
-  const container = document.getElementById('video-list');
-  container.innerHTML = '<div style="font-size:11px; color: var(--text-dim); padding: 20px 0;">Cargando<span class="loading-dots"></span></div>';
-  const videos = await DB.getVideos();
+let currentFilter = 'views';
+let cachedVideos = [];
 
-  if (videos.length === 0) {
+function setFilter(field, btn) {
+  currentFilter = field;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderVideoList(cachedVideos);
+}
+
+function getThumbnail(url) {
+  const id = extractVideoId(url);
+  return id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null;
+}
+
+function renderVideoList(videos) {
+  const container = document.getElementById('video-list');
+  if (!videos || videos.length === 0) {
     container.innerHTML = '<div class="empty-state"><span class="empty-icon">▶</span>No hay videos analizados todavía.<br>Cargá tu primer video desde "+ Cargar Video".</div>';
     return;
   }
 
-  container.innerHTML = videos.map((v, i) => `
-    <div class="video-card" onclick="showVideoDetail(${i})">
+  const sorted = [...videos].sort((a, b) => {
+    if (currentFilter === 'timestamp') return new Date(b.timestamp) - new Date(a.timestamp);
+    return (parseInt(b[currentFilter]) || 0) - (parseInt(a[currentFilter]) || 0);
+  });
+
+  container.innerHTML = sorted.map((v, i) => {
+    const thumb = getThumbnail(v.url);
+    const thumbEl = thumb
+      ? `<img class="video-thumb" src="${thumb}" alt="thumbnail" onerror="this.style.display='none'">`
+      : `<div class="video-thumb-placeholder">▶</div>`;
+    return `
+    <div class="video-card" onclick="showVideoDetail('${v.url}')">
       <div class="video-status status-analyzed">✓ Analizado</div>
-      <div class="video-card-title">${v.title || v.url}</div>
-      <div class="video-metrics">
-        <div class="metric">Views: <span class="metric-val">${parseInt(v.views)?.toLocaleString() || '—'}</span></div>
-        <div class="metric">Likes: <span class="metric-val">${parseInt(v.likes)?.toLocaleString() || '—'}</span></div>
-        <div class="metric">${new Date(v.timestamp).toLocaleDateString('es-AR')}</div>
+      <div class="video-card-inner">
+        ${thumbEl}
+        <div class="video-card-body">
+          <div class="video-card-title">${v.title || v.url}</div>
+          <div class="video-metrics" style="flex-wrap:wrap; gap: 10px; margin-top: 8px;">
+            <div class="metric">👁 <span class="metric-val">${parseInt(v.views)?.toLocaleString('es-AR') || '—'}</span></div>
+            <div class="metric">❤️ <span class="metric-val">${parseInt(v.likes)?.toLocaleString('es-AR') || '—'}</span></div>
+            <div class="metric">💬 <span class="metric-val">${parseInt(v.comment_count)?.toLocaleString('es-AR') || '—'}</span></div>
+            <div class="metric" style="font-size:9px;">${new Date(v.timestamp).toLocaleDateString('es-AR')}</div>
+          </div>
+        </div>
       </div>
-    </div>
-  `).join('');
-  
-  // Store for detail view
-  window._cachedVideos = videos;
+    </div>`;
+  }).join('');
+
+  window._cachedVideos = sorted;
 }
 
-async function showVideoDetail(idx) {
-  const videos = window._cachedVideos || await DB.getVideos();
-  const video = videos[idx];
+async function renderLibrary() {
+  const container = document.getElementById('video-list');
+  container.innerHTML = '<div style="font-size:11px; color: var(--text-dim); padding: 20px 0;">Cargando<span class="loading-dots"></span></div>';
+  cachedVideos = await DB.getVideos();
+  renderVideoList(cachedVideos);
+}
+
+async function showVideoDetail(url) {
+  const videos = cachedVideos.length ? cachedVideos : await DB.getVideos();
+  const video = videos.find(v => v.url === url);
   if (!video) return;
   const win = window.open('', '_blank');
-  win.document.write(`<html><head><title>${video.title}</title><style>body{background:#0a0a0a;color:#e8e8e8;font-family:monospace;padding:32px;max-width:800px;margin:0 auto;white-space:pre-wrap;line-height:1.7;font-size:13px;}</style></head><body>${video.analysis}</body></html>`);
+  win.document.write(`<html><head><title>${video.title}</title><style>body{background:#0a0a0a;color:#e8e8e8;font-family:monospace;padding:32px;max-width:800px;margin:0 auto;white-space:pre-wrap;line-height:1.7;font-size:13px;}</style></head><body><h2 style="color:#e94560;font-family:sans-serif;">${video.title}</h2><p style="color:#666;margin-bottom:32px;">👁 ${parseInt(video.views)?.toLocaleString()} views · ❤️ ${parseInt(video.likes)?.toLocaleString()} likes · 💬 ${parseInt(video.comment_count)?.toLocaleString()} comentarios</p>${video.analysis}</body></html>`);
 }
 
 async function renderSidebar() {
