@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -529,21 +530,34 @@
     <!-- SCREEN: UPLOAD -->
     <div class="screen active" id="screen-upload">
       <div class="section-title">NUEVO ANÁLISIS</div>
-      <div class="section-sub">Cargá el video y su URL de YouTube para análisis completo</div>
+      <div class="section-sub">Pegá la URL y el sistema trae todo automáticamente de YouTube</div>
 
       <div class="input-group">
         <label class="input-label">URL del Short / Video de YouTube</label>
-        <input type="text" class="input-field" id="yt-url" placeholder="https://youtube.com/shorts/..." />
+        <div style="display:flex; gap: 8px;">
+          <input type="text" class="input-field" id="yt-url" placeholder="https://youtube.com/shorts/..." style="flex:1;" />
+          <button class="btn btn-ghost" onclick="fetchYouTubeData()" style="white-space:nowrap; padding: 0 16px;">AUTO ↓</button>
+        </div>
+        <div id="yt-fetch-status" style="font-size: 11px; margin-top: 6px; color: var(--text-dim);"></div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Título</label>
+        <input type="text" class="input-field" id="yt-title" placeholder="Se completa automático..." style="color: var(--accent2);" />
       </div>
 
       <div class="row">
         <div class="input-group">
-          <label class="input-label">Views (opcional, si ya las sabés)</label>
-          <input type="number" class="input-field" id="yt-views" placeholder="ej: 450000" />
+          <label class="input-label">Views</label>
+          <input type="number" class="input-field" id="yt-views" placeholder="Auto..." />
         </div>
         <div class="input-group">
           <label class="input-label">Likes</label>
-          <input type="number" class="input-field" id="yt-likes" placeholder="ej: 12000" />
+          <input type="number" class="input-field" id="yt-likes" placeholder="Auto..." />
+        </div>
+        <div class="input-group">
+          <label class="input-label">Comentarios</label>
+          <input type="number" class="input-field" id="yt-comment-count" placeholder="Auto..." />
         </div>
       </div>
 
@@ -562,8 +576,8 @@
       </div>
 
       <div class="input-group">
-        <label class="input-label">Comentarios destacados (pegá los más relevantes, opcional)</label>
-        <textarea class="input-field" id="yt-comments" placeholder="Pegá acá los comentarios más likeados o representativos del video..."></textarea>
+        <label class="input-label">Comentarios destacados <span style="color: var(--text-dim)">(se cargan automático, podés editar)</span></label>
+        <textarea class="input-field" id="yt-comments" placeholder="Se cargan automáticamente al presionar AUTO ↓..." style="min-height: 120px;"></textarea>
       </div>
 
       <button class="btn btn-primary" id="btn-analyze" onclick="startAnalysis()" disabled>
@@ -674,6 +688,84 @@
 
 <script>
 // ============================================================
+// CONFIG
+// ============================================================
+const YT_API_KEY = 'AIzaSyCyxAexETnAgaBwS2gS9rhdv0bGgbw7_OM';
+
+function extractVideoId(url) {
+  const patterns = [
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+async function fetchYouTubeData() {
+  const url = document.getElementById('yt-url').value.trim();
+  const statusEl = document.getElementById('yt-fetch-status');
+
+  if (!url) { statusEl.textContent = 'Primero pegá la URL.'; return; }
+
+  const videoId = extractVideoId(url);
+  if (!videoId) { statusEl.textContent = 'No se pudo extraer el ID del video. Verificá la URL.'; return; }
+
+  statusEl.textContent = 'Buscando datos en YouTube...';
+  statusEl.style.color = 'var(--accent2)';
+
+  try {
+    // Fetch video stats + snippet
+    const videoResp = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${YT_API_KEY}`
+    );
+    const videoData = await videoResp.json();
+
+    if (!videoData.items || videoData.items.length === 0) {
+      statusEl.textContent = 'Video no encontrado. Verificá la URL o que el video sea público.';
+      statusEl.style.color = 'var(--accent)';
+      return;
+    }
+
+    const item = videoData.items[0];
+    const stats = item.statistics;
+    const snippet = item.snippet;
+
+    document.getElementById('yt-title').value = snippet.title || '';
+    document.getElementById('yt-views').value = stats.viewCount || '';
+    document.getElementById('yt-likes').value = stats.likeCount || '';
+    document.getElementById('yt-comment-count').value = stats.commentCount || '';
+
+    // Fetch top comments
+    statusEl.textContent = 'Trayendo comentarios...';
+    const commentsResp = await fetch(
+      `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&order=relevance&maxResults=30&key=${YT_API_KEY}`
+    );
+    const commentsData = await commentsResp.json();
+
+    if (commentsData.items && commentsData.items.length > 0) {
+      const commentLines = commentsData.items.map(c => {
+        const top = c.snippet.topLevelComment.snippet;
+        return `[${top.likeCount} likes] ${top.authorDisplayName}: ${top.textDisplay}`;
+      });
+      document.getElementById('yt-comments').value = commentLines.join('\n\n');
+    }
+
+    statusEl.textContent = '✓ Datos cargados correctamente desde YouTube';
+    statusEl.style.color = 'var(--success)';
+    checkReadyToAnalyze();
+
+  } catch(err) {
+    statusEl.textContent = 'Error al conectar con YouTube: ' + err.message;
+    statusEl.style.color = 'var(--accent)';
+  }
+}
+
+// ============================================================
 // DATA LAYER
 // ============================================================
 const DB = {
@@ -743,6 +835,7 @@ dz.addEventListener('drop', e => {
 // ============================================================
 async function startAnalysis() {
   const url = document.getElementById('yt-url').value.trim();
+  const title = document.getElementById('yt-title').value.trim();
   const views = document.getElementById('yt-views').value;
   const likes = document.getElementById('yt-likes').value;
   const comments = document.getElementById('yt-comments').value;
@@ -1020,7 +1113,7 @@ function finalizeAndSave() {
   // Save video
   const videoData = {
     url: currentAnalysisData.url,
-    title: extractTitle(currentAnalysisData.url),
+    title: document.getElementById('yt-title').value.trim() || extractTitle(currentAnalysisData.url),
     views: currentAnalysisData.views,
     likes: currentAnalysisData.likes,
     analysis: currentAnalysisData.analysis,
