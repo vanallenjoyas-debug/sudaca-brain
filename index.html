@@ -873,8 +873,16 @@ function showScreen(name) {
 function handleFileSelect(input) {
   if (input.files[0]) {
     currentVideoFile = input.files[0];
-    document.getElementById('file-selected').style.display = 'block';
-    document.getElementById('file-selected').textContent = '✓ ' + input.files[0].name + ' (' + (input.files[0].size / 1024 / 1024).toFixed(1) + ' MB)';
+    const sizeMB = (input.files[0].size / 1024 / 1024).toFixed(1);
+    const fileDiv = document.getElementById('file-selected');
+    fileDiv.style.display = 'block';
+    fileDiv.style.color = 'var(--success)';
+    fileDiv.style.padding = '10px 14px';
+    fileDiv.style.border = '1px solid var(--success)';
+    fileDiv.style.marginTop = '8px';
+    fileDiv.style.fontSize = '12px';
+    fileDiv.innerHTML = `✓ VIDEO LISTO &nbsp;|&nbsp; ${input.files[0].name} &nbsp;|&nbsp; ${sizeMB} MB`;
+    document.getElementById('drop-zone').style.borderColor = 'var(--success)';
     checkReadyToAnalyze();
   }
 }
@@ -884,7 +892,12 @@ document.getElementById('yt-url').addEventListener('input', checkReadyToAnalyze)
 function checkReadyToAnalyze() {
   const hasUrl = document.getElementById('yt-url').value.trim().length > 10;
   const hasFile = currentVideoFile !== null;
-  document.getElementById('btn-analyze').disabled = !(hasUrl && hasFile);
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = !(hasUrl && hasFile);
+  if (hasUrl && hasFile) {
+    btn.textContent = '▶ ANALIZAR VIDEO';
+    btn.style.background = 'var(--accent)';
+  }
 }
 
 // Drag and drop
@@ -915,6 +928,9 @@ async function startAnalysis() {
   document.getElementById('analysis-divider').style.display = 'block';
   document.getElementById('analysis-section').style.display = 'block';
   document.getElementById('btn-analyze').disabled = true;
+  document.getElementById('btn-analyze').textContent = '⏳ ANALIZANDO... NO CERRÉS ESTA PÁGINA';
+  document.getElementById('btn-analyze').style.background = 'var(--text-dim)';
+  document.getElementById('analysis-section').scrollIntoView({ behavior: 'smooth' });
 
   setProgress(10, 'Leyendo archivo de video...');
   appendLog('<span class="system">→ Cargando video para análisis...</span>\n');
