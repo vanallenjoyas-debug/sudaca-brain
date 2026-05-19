@@ -933,36 +933,40 @@ async function startAnalysis() {
   document.getElementById('btn-analyze').style.background = 'var(--text-dim)';
   document.getElementById('analysis-section').scrollIntoView({ behavior: 'smooth' });
 
-  setProgress(10, 'Leyendo archivo de video...');
-  appendLog('<span class="system">→ Cargando video...</span>\n');
-
-  const videoBase64 = await fileToBase64(currentVideoFile);
-  const mimeType = currentVideoFile.type || 'video/mp4';
-
-  setProgress(30, 'Enviando al servidor para análisis...');
-  appendLog('<span class="system">→ Enviando a Claude vía backend...</span>\n');
+  setProgress(10, 'Preparando video...');
+  appendLog('<span class="system">→ Enviando video al servidor...</span>\n');
 
   const glosario = await DB.getGlosario();
   const patrones = await DB.getPatrones();
   const contextVideos = await DB.getVideos();
 
   try {
+    const formData = new FormData();
+    formData.append('video', currentVideoFile);
+    formData.append('url', url);
+    formData.append('title', title);
+    formData.append('views', views);
+    formData.append('likes', likes);
+    formData.append('comment_count', comment_count);
+    formData.append('comments', comments);
+    formData.append('glosario', JSON.stringify(glosario));
+    formData.append('patrones', JSON.stringify(patrones));
+
+    setProgress(30, 'Subiendo video al servidor...');
+
     const response = await fetch(`${API}/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        videoBase64,
-        mimeType,
-        url, title, views, likes, comment_count, comments,
-        glosario, patrones, contextVideos
-      })
+      body: formData
     });
 
-    setProgress(75, 'Procesando análisis...');
+    setProgress(75, 'Claude está analizando...');
     const data = await response.json();
 
     if (data.error) {
-      appendLog(`<span class="system">→ Error en análisis: ${data.error}</span>\n`);
+      appendLog(`<span class="system">→ Error: ${data.error}</span>\n`);
+      document.getElementById('btn-analyze').disabled = false;
+      document.getElementById('btn-analyze').textContent = '▶ ANALIZAR VIDEO';
+      document.getElementById('btn-analyze').style.background = 'var(--accent)';
       return;
     }
 
