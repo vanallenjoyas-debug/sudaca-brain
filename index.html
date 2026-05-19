@@ -766,19 +766,52 @@ async function fetchYouTubeData() {
 }
 
 // ============================================================
-// DATA LAYER
+// DATA LAYER — Backend real
 // ============================================================
+const API = 'https://sudaca-brain-backend-production.up.railway.app';
+
 const DB = {
-  get: (key) => { try { return JSON.parse(localStorage.getItem('sudaca_' + key)) || null; } catch { return null; } },
-  set: (key, val) => localStorage.setItem('sudaca_' + key, JSON.stringify(val)),
-  getVideos: () => DB.get('videos') || [],
-  saveVideo: (v) => { const vids = DB.getVideos(); const idx = vids.findIndex(x => x.url === v.url); idx >= 0 ? vids[idx] = v : vids.push(v); DB.set('videos', vids); },
-  getGlosario: () => DB.get('glosario') || {},
-  addGlosario: (key, val) => { const g = DB.getGlosario(); g[key] = val; DB.set('glosario', g); },
-  getPatrones: () => DB.get('patrones') || [],
-  addPatron: (p) => { const ps = DB.getPatrones(); if (!ps.includes(p)) ps.push(p); DB.set('patrones', ps); },
-  getRecursos: () => DB.get('recursos') || [],
-  addRecurso: (r) => { const rs = DB.getRecursos(); if (!rs.find(x => x.nombre === r.nombre)) rs.push(r); DB.set('recursos', rs); },
+  // VIDEOS
+  getVideos: async () => {
+    const r = await fetch(`${API}/videos`);
+    return r.ok ? await r.json() : [];
+  },
+  saveVideo: async (v) => {
+    await fetch(`${API}/videos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(v)
+    });
+  },
+  // GLOSARIO
+  getGlosario: async () => {
+    const r = await fetch(`${API}/glosario`);
+    return r.ok ? await r.json() : {};
+  },
+  addGlosario: async (key, value) => {
+    await fetch(`${API}/glosario`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value })
+    });
+  },
+  // PATRONES
+  getPatrones: async () => {
+    const r = await fetch(`${API}/patrones`);
+    return r.ok ? await r.json() : [];
+  },
+  addPatron: async (patron) => {
+    await fetch(`${API}/patrones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patron })
+    });
+  },
+  // STATS
+  getStats: async () => {
+    const r = await fetch(`${API}/stats`);
+    return r.ok ? await r.json() : { videos: 0, glosario: 0, patrones: 0 };
+  }
 };
 
 // ============================================================
@@ -1094,20 +1127,20 @@ Actualizá el GLOSARIO DETECTADO y los PATRONES REPLICABLES incorporando estas r
   finalizeAndSave();
 }
 
-function finalizeAndSave() {
+async function finalizeAndSave() {
   // Extract and save glosario
   const glosarioMatches = currentAnalysisData.analysis.matchAll(/([^→\n]+)\s*→\s*([^\n]+)/g);
   for (const match of glosarioMatches) {
     const key = match[1].trim().replace(/^["\*]+|["\*]+$/g, '');
     const val = match[2].trim();
-    if (key.length > 2 && key.length < 60) DB.addGlosario(key, val);
+    if (key.length > 2 && key.length < 60) await DB.addGlosario(key, val);
   }
 
   // Extract patrones
   const patronesSection = currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
   if (patronesSection) {
     const lines = patronesSection[1].split('\n').filter(l => l.trim().startsWith('-'));
-    lines.forEach(l => DB.addPatron(l.replace(/^-\s*/, '').trim()));
+    for (const l of lines) await DB.addPatron(l.replace(/^-\s*/, '').trim());
   }
 
   // Save video
@@ -1116,26 +1149,26 @@ function finalizeAndSave() {
     title: document.getElementById('yt-title').value.trim() || extractTitle(currentAnalysisData.url),
     views: currentAnalysisData.views,
     likes: currentAnalysisData.likes,
+    comment_count: parseInt(document.getElementById('yt-comment-count').value) || 0,
     analysis: currentAnalysisData.analysis,
     answers: currentAnalysisData.answers || [],
-    timestamp: currentAnalysisData.timestamp,
-    status: 'analyzed'
   };
-  DB.saveVideo(videoData);
+  await DB.saveVideo(videoData);
 
-  renderSidebar();
-  updateStats();
+  await renderSidebar();
+  await updateStats();
 
+  const stats = await DB.getStats();
   document.getElementById('final-result').style.display = 'block';
   document.getElementById('final-result').innerHTML = `
     <div class="copy-result flash" style="border-color: var(--success);">
-      <div class="copy-label">✓ ANÁLISIS GUARDADO PERMANENTEMENTE</div>
+      <div class="copy-label">✓ ANÁLISIS GUARDADO EN LA NUBE</div>
       <div class="copy-text" style="color: var(--success); font-size: 12px;">
 El video fue analizado y el conocimiento quedó guardado.<br>
-El archivo de video puede descartarse.<br><br>
-<span style="color: var(--text-mid);">Glosario actualizado: ${Object.keys(DB.getGlosario()).length} entradas
-Patrones acumulados: ${DB.getPatrones().length}
-Videos en biblioteca: ${DB.getVideos().length}</span>
+Accesible desde cualquier dispositivo.<br><br>
+<span style="color: var(--text-mid);">Glosario: ${stats.glosario} entradas
+Patrones: ${stats.patrones}
+Videos: ${stats.videos}</span>
       </div>
     </div>`;
 }
@@ -1157,18 +1190,18 @@ async function generateCopy() {
 
   if (!description) { alert('Describí el video primero'); return; }
 
-  const videos = DB.getVideos();
-  if (videos.length === 0) {
-    document.getElementById('gen-results').innerHTML = '<div class="empty-state"><span class="empty-icon">⚠</span>Necesitás analizar al menos un video primero.</div>';
-    return;
-  }
-
   document.getElementById('btn-generate').disabled = true;
   document.getElementById('gen-results').innerHTML = '<div style="font-size:12px; color: var(--text-dim); padding: 20px 0;">Generando<span class="loading-dots"></span></div>';
 
-  const glosario = DB.getGlosario();
-  const patrones = DB.getPatrones();
-  const recursos = DB.getRecursos();
+  const videos = await DB.getVideos();
+  if (videos.length === 0) {
+    document.getElementById('gen-results').innerHTML = '<div class="empty-state"><span class="empty-icon">⚠</span>Necesitás analizar al menos un video primero.</div>';
+    document.getElementById('btn-generate').disabled = false;
+    return;
+  }
+
+  const glosario = await DB.getGlosario();
+  const patrones = await DB.getPatrones();
 
   const contextVideos = videos.slice(-5).map(v => {
     const shortAnalysis = v.analysis ? v.analysis.substring(0, 800) : '';
@@ -1255,9 +1288,10 @@ function renderCopyResults(text) {
 // ============================================================
 // RENDER
 // ============================================================
-function renderLibrary() {
-  const videos = DB.getVideos();
+async function renderLibrary() {
   const container = document.getElementById('video-list');
+  container.innerHTML = '<div style="font-size:11px; color: var(--text-dim); padding: 20px 0;">Cargando<span class="loading-dots"></span></div>';
+  const videos = await DB.getVideos();
 
   if (videos.length === 0) {
     container.innerHTML = '<div class="empty-state"><span class="empty-icon">▶</span>No hay videos analizados todavía.<br>Cargá tu primer video desde "+ Cargar Video".</div>';
@@ -1269,24 +1303,28 @@ function renderLibrary() {
       <div class="video-status status-analyzed">✓ Analizado</div>
       <div class="video-card-title">${v.title || v.url}</div>
       <div class="video-metrics">
-        <div class="metric">Views: <span class="metric-val">${v.views?.toLocaleString() || '—'}</span></div>
-        <div class="metric">Likes: <span class="metric-val">${v.likes?.toLocaleString() || '—'}</span></div>
+        <div class="metric">Views: <span class="metric-val">${parseInt(v.views)?.toLocaleString() || '—'}</span></div>
+        <div class="metric">Likes: <span class="metric-val">${parseInt(v.likes)?.toLocaleString() || '—'}</span></div>
         <div class="metric">${new Date(v.timestamp).toLocaleDateString('es-AR')}</div>
       </div>
     </div>
   `).join('');
+  
+  // Store for detail view
+  window._cachedVideos = videos;
 }
 
-function showVideoDetail(idx) {
-  const video = DB.getVideos()[idx];
+async function showVideoDetail(idx) {
+  const videos = window._cachedVideos || await DB.getVideos();
+  const video = videos[idx];
   if (!video) return;
   const win = window.open('', '_blank');
   win.document.write(`<html><head><title>${video.title}</title><style>body{background:#0a0a0a;color:#e8e8e8;font-family:monospace;padding:32px;max-width:800px;margin:0 auto;white-space:pre-wrap;line-height:1.7;font-size:13px;}</style></head><body>${video.analysis}</body></html>`);
 }
 
-function renderSidebar() {
-  const glosario = DB.getGlosario();
-  const patrones = DB.getPatrones();
+async function renderSidebar() {
+  const glosario = await DB.getGlosario();
+  const patrones = await DB.getPatrones();
 
   const gList = document.getElementById('glosario-list');
   if (Object.keys(glosario).length === 0) {
@@ -1307,13 +1345,16 @@ function renderSidebar() {
     pList.innerHTML = patrones.slice(-6).map(p => `<div class="tag tag-gold" style="display:block; margin-bottom: 6px; font-size: 10px; line-height: 1.5;">${p.substring(0, 80)}${p.length > 80 ? '...' : ''}</div>`).join('');
   }
 
-  updateStats();
+  await updateStats();
 }
 
-function updateStats() {
-  document.getElementById('stat-videos').textContent = DB.getVideos().length;
-  document.getElementById('stat-glosario').textContent = Object.keys(DB.getGlosario()).length;
-  document.getElementById('stat-patrones').textContent = DB.getPatrones().length;
+async function updateStats() {
+  try {
+    const stats = await DB.getStats();
+    document.getElementById('stat-videos').textContent = stats.videos;
+    document.getElementById('stat-glosario').textContent = stats.glosario;
+    document.getElementById('stat-patrones').textContent = stats.patrones;
+  } catch(e) {}
 }
 
 // ============================================================
@@ -1347,8 +1388,11 @@ function formatAnalysisForLog(text) {
 }
 
 // Init
-renderSidebar();
-updateStats();
+// Init
+(async () => {
+  await renderSidebar();
+  await updateStats();
+})();
 </script>
 </body>
 </html>
