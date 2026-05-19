@@ -451,6 +451,9 @@ async function finalizeAndSave(){
   updateStats(stats);
 
   document.getElementById('final-result').innerHTML=`<div class="final-box flash"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--success);margin-bottom:10px;">✓ GUARDADO EN LA NUBE</div><div style="font-size:12px;color:var(--success);">Análisis guardado. Accesible desde cualquier dispositivo.</div><div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Videos: ${stats.videos} | Glosario: ${stats.glosario} | Patrones: ${stats.patrones}</div></div>`;
+  // Reset button
+  const btn=document.getElementById('btn-analyze');
+  btn.textContent='✓ ANÁLISIS COMPLETADO';btn.style.background='var(--success)';btn.style.color='#000';btn.disabled=false;
 }
 
 // LIBRARY
