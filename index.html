@@ -283,6 +283,9 @@ textarea.input-field{resize:vertical;min-height:80px}
   </div>
 
   <div id="gen-results" style="margin-top:20px;"></div>
+  <div id="gen-clear-bar" style="display:none;margin-top:12px;">
+    <button class="btn btn-ghost" style="font-size:10px;" onclick="clearGenerator()">✕ LIMPIAR Y EMPEZAR DE NUEVO</button>
+  </div>
 </div>
 
 <div class="screen" id="screen-ideas">
@@ -648,6 +651,18 @@ function handleGenFile(input){
   }
 }
 
+function clearGenerator(){
+  currentGenFile=null;
+  document.getElementById('gen-results').innerHTML='';
+  document.getElementById('gen-clear-bar').style.display='none';
+  document.getElementById('gen-file-ready').style.display='none';
+  document.getElementById('gen-file-ready').innerHTML='';
+  document.getElementById('btn-generate-video').disabled=true;
+  document.getElementById('gen-drop-zone').style.borderColor='';
+  document.getElementById('gen-video-file').value='';
+  document.getElementById('gen-desc').value='';
+}
+
 async function generateCopyWithVideo(){
   if(!currentGenFile) return;
   document.getElementById('btn-generate-video').disabled = true;
@@ -689,6 +704,7 @@ async function generateCopy(){
     const d=await r.json();
     const opts=(d.copy||d.error||'').split(/OPCIÓN_\d+:/g).filter(s=>s.trim());
     document.getElementById('gen-results').innerHTML=opts.length?opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join(''):`<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
+    document.getElementById('gen-clear-bar').style.display='block';
   }catch(err){document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`}
   document.getElementById('btn-generate').disabled=false;
 }
