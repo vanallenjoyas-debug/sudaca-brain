@@ -4,122 +4,142 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sudaca Brain v2.0</title>
+<title>Sudaca Brain</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0d0d0d; --surface: #1a1a2e; --surface2: #16213e;
-  --border: #e94560; --accent: #e94560; --accent2: #f5a623;
-  --text: #ffffff; --text-dim: #a0a0b0; --text-mid: #ccccdd;
-  --success: #00ffaa; --mono: 'IBM Plex Mono', monospace; --display: 'Bebas Neue', sans-serif;
+  --bg:#0d0d0d;--surface:#1a1a2e;--surface2:#16213e;
+  --border:#e94560;--accent:#e94560;--accent2:#f5a623;
+  --text:#ffffff;--text-dim:#a0a0b0;--text-mid:#ccccdd;
+  --success:#00ffaa;--mono:'IBM Plex Mono',monospace;--display:'Bebas Neue',sans-serif;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: var(--mono); min-height: 100vh; overflow-x: hidden; }
-header { border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg); z-index: 100; flex-wrap: wrap; gap: 8px; }
-.logo { font-family: var(--display); font-size: 26px; letter-spacing: 2px; color: var(--accent); }
-.nav-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-.nav-tab { padding: 6px 14px; background: none; border: 1px solid transparent; color: var(--text-dim); font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
-.nav-tab:hover { color: var(--text); border-color: var(--border); }
-.nav-tab.active { color: var(--accent); border-color: var(--accent); background: rgba(233,69,96,0.08); }
-.stats-bar { display: flex; gap: 24px; padding: 10px 24px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
-.stat { font-size: 11px; color: var(--text-dim); }
-.stat-val { color: var(--accent2); font-weight: 600; }
-.main { display: grid; grid-template-columns: 1fr 300px; min-height: calc(100vh - 100px); }
-@media (max-width: 768px) { .main { grid-template-columns: 1fr; } .sidebar { display: none; } }
-.panel { padding: 24px; border-right: 1px solid var(--border); }
-.sidebar { padding: 20px; background: var(--surface); overflow-y: auto; max-height: calc(100vh - 100px); position: sticky; top: 100px; }
-.screen { display: none; }
-.screen.active { display: block; }
-.section-title { font-family: var(--display); font-size: 20px; letter-spacing: 2px; margin-bottom: 4px; }
-.section-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 20px; }
-.input-group { margin-bottom: 14px; }
-.input-label { display: block; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
-.input-field { width: 100%; background: var(--surface2); border: 1px solid #333; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 10px 14px; outline: none; transition: border-color 0.15s; }
-.input-field:focus { border-color: var(--accent); }
-.input-field::placeholder { color: var(--text-dim); }
-textarea.input-field { resize: vertical; min-height: 80px; }
-.row { display: flex; gap: 10px; }
-.row .input-group { flex: 1; }
-.drop-zone { border: 1px dashed #444; background: var(--surface2); padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
-.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(233,69,96,0.05); }
-.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.drop-icon { font-size: 28px; margin-bottom: 10px; display: block; }
-.drop-text { font-size: 11px; color: var(--text-dim); line-height: 1.6; }
-.file-ready { margin-top: 8px; font-size: 11px; padding: 8px 12px; border: 1px solid var(--success); color: var(--success); display: none; }
-.btn { padding: 10px 20px; font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; border: none; cursor: pointer; transition: all 0.15s; font-weight: 600; }
-.btn-primary { background: var(--accent); color: #fff; width: 100%; margin-top: 8px; }
-.btn-primary:hover { background: #ff5577; }
-.btn-primary:disabled { background: #444; color: var(--text-dim); cursor: not-allowed; }
-.btn-ghost { background: none; border: 1px solid #444; color: var(--text-dim); }
-.btn-ghost:hover { border-color: var(--text-mid); color: var(--text); }
-.btn-danger { background: none; border: 1px solid var(--accent); color: var(--accent); font-size: 10px; padding: 4px 10px; cursor: pointer; font-family: var(--mono); letter-spacing: 1px; }
-.btn-danger:hover { background: var(--accent); color: #fff; }
-.progress-wrap { margin: 14px 0; }
-.progress-label { font-size: 10px; color: var(--text-dim); margin-bottom: 5px; }
-.progress-bar { height: 2px; background: #333; overflow: hidden; }
-.progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; width: 0%; }
-.analysis-log { background: var(--surface2); border: 1px solid #333; padding: 16px; font-size: 11px; line-height: 1.8; max-height: 300px; overflow-y: auto; white-space: pre-wrap; color: var(--text-mid); margin-bottom: 12px; }
-.analysis-log .hl { color: var(--accent2); }
-.analysis-log .q { color: var(--accent); }
-.analysis-log .sys { color: var(--text-dim); font-style: italic; }
-.questions-panel { border: 1px solid var(--accent); background: rgba(233,69,96,0.04); padding: 16px; margin-top: 16px; }
-.questions-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
-.question-item { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #333; }
-.question-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.question-text { font-size: 12px; color: var(--text); margin-bottom: 8px; line-height: 1.6; }
-.question-input { width: 100%; background: var(--surface); border: 1px solid #333; color: var(--text); font-family: var(--mono); font-size: 11px; padding: 8px 12px; outline: none; resize: vertical; min-height: 50px; }
-.final-box { border: 1px solid var(--success); background: rgba(0,255,170,0.04); padding: 16px; margin-top: 16px; }
-.divider { border: none; border-top: 1px solid #333; margin: 20px 0; }
-.filter-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-.filter-btn { font-size: 10px; padding: 5px 12px; background: none; border: 1px solid #444; color: var(--text-dim); font-family: var(--mono); cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; }
-.filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(233,69,96,0.08); }
-.video-card { border: 1px solid #333; background: var(--surface2); padding: 14px; margin-bottom: 10px; transition: border-color 0.15s; }
-.video-card:hover { border-color: var(--accent); }
-.video-card-inner { display: flex; gap: 12px; align-items: flex-start; }
-.video-thumb { width: 80px; height: 140px; object-fit: cover; flex-shrink: 0; background: #111; border: 1px solid #333; }
-.video-thumb-placeholder { width: 80px; height: 140px; flex-shrink: 0; background: #111; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-dim); }
-.video-card-body { flex: 1; min-width: 0; }
-.video-card-title { font-size: 12px; color: var(--text); margin-bottom: 8px; line-height: 1.4; }
-.video-metrics { display: flex; gap: 12px; flex-wrap: wrap; font-size: 10px; color: var(--text-dim); }
-.metric-val { color: var(--accent2); }
-.video-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-.status-badge { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--success); color: var(--success); display: inline-block; margin-bottom: 6px; }
-.copy-result { border: 1px solid #333; background: var(--surface2); padding: 16px; margin-bottom: 10px; position: relative; }
-.copy-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
-.copy-text { font-size: 12px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
-.copy-score { position: absolute; top: 12px; right: 12px; font-size: 16px; font-family: var(--display); color: var(--accent2); }
-.ideas-content { background: var(--surface2); border: 1px solid #333; padding: 20px; font-size: 12px; line-height: 1.8; color: var(--text-mid); }
-.sidebar-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #333; }
-.glosario-item { display: flex; gap: 6px; margin-bottom: 8px; font-size: 11px; }
-.glosario-key { color: var(--accent); font-style: italic; flex-shrink: 0; }
-.glosario-arrow { color: var(--text-dim); flex-shrink: 0; }
-.glosario-val { color: var(--text-mid); }
-.patron-item { font-size: 10px; color: var(--text-mid); border: 1px solid #333; padding: 4px 8px; margin-bottom: 5px; line-height: 1.5; }
-.empty-state { text-align: center; padding: 48px 20px; color: var(--text-dim); font-size: 12px; line-height: 2; }
-.empty-icon { font-size: 36px; display: block; margin-bottom: 14px; opacity: 0.3; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto; }
-.modal-overlay.open { display: flex; }
-.modal { background: var(--surface); border: 1px solid var(--accent); padding: 24px; max-width: 820px; width: 100%; position: relative; }
-.modal-close { position: absolute; top: 12px; right: 12px; background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; }
-.modal-title { font-family: var(--display); font-size: 18px; color: var(--accent); margin-bottom: 4px; }
-.modal-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 14px; }
-.modal-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #333; padding-bottom: 8px; }
-.modal-tab { background: none; border: none; color: var(--text-dim); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; padding: 4px 12px; }
-.modal-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
-.modal-content { font-size: 12px; line-height: 1.8; color: var(--text-mid); white-space: pre-wrap; max-height: 480px; overflow-y: auto; }
-.comment-item { border-bottom: 1px solid #333; padding: 10px 0; }
-.comment-likes { color: var(--accent2); font-size: 10px; margin-bottom: 4px; }
-.comment-text { font-size: 12px; color: var(--text-mid); line-height: 1.5; }
-.comment-author { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
-@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
-.flash { animation: fadeIn 0.3s ease; }
-@keyframes dots { 0%,20%{content:''} 40%{content:'.'} 60%{content:'..'} 80%,100%{content:'...'} }
-.loading::after { content:''; animation: dots 1.2s steps(4,end) infinite; }
-::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--surface); } ::-webkit-scrollbar-thumb { background: #444; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-box{background:var(--surface);border:1px solid var(--accent);padding:40px;width:100%;max-width:360px;text-align:center}
+.login-logo{font-family:var(--display);font-size:36px;color:var(--accent);letter-spacing:3px;margin-bottom:8px}
+.login-sub{font-size:11px;color:var(--text-dim);margin-bottom:28px}
+.login-input{width:100%;background:var(--surface2);border:1px solid #333;color:var(--text);font-family:var(--mono);font-size:14px;padding:12px 16px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:3px}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{width:100%;background:var(--accent);color:#fff;border:none;font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:12px;cursor:pointer;font-weight:600}
+.login-btn:hover{background:#ff5577}
+.login-error{font-size:11px;color:var(--accent);margin-top:10px;min-height:16px}
+/* MAIN */
+header{border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:100;flex-wrap:wrap;gap:8px}
+.logo{font-family:var(--display);font-size:26px;letter-spacing:2px;color:var(--accent)}
+.nav-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.nav-tab{padding:6px 14px;background:none;border:1px solid transparent;color:var(--text-dim);font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.15s}
+.nav-tab:hover{color:var(--text);border-color:var(--border)}
+.nav-tab.active{color:var(--accent);border-color:var(--accent);background:rgba(233,69,96,0.08)}
+.stats-bar{display:flex;gap:24px;padding:10px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.stat{font-size:11px;color:var(--text-dim)}
+.stat-val{color:var(--accent2);font-weight:600}
+.main{display:grid;grid-template-columns:1fr 300px;min-height:calc(100vh - 100px)}
+@media(max-width:768px){.main{grid-template-columns:1fr}.sidebar{display:none}}
+.panel{padding:24px;border-right:1px solid var(--border)}
+.sidebar{padding:20px;background:var(--surface);overflow-y:auto;max-height:calc(100vh - 100px);position:sticky;top:100px}
+.screen{display:none}.screen.active{display:block}
+.section-title{font-family:var(--display);font-size:20px;letter-spacing:2px;margin-bottom:4px}
+.section-sub{font-size:11px;color:var(--text-dim);margin-bottom:20px}
+.input-group{margin-bottom:14px}
+.input-label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px}
+.input-field{width:100%;background:var(--surface2);border:1px solid #333;color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 14px;outline:none;transition:border-color 0.15s}
+.input-field:focus{border-color:var(--accent)}
+.input-field::placeholder{color:var(--text-dim)}
+textarea.input-field{resize:vertical;min-height:80px}
+.row{display:flex;gap:10px}.row .input-group{flex:1}
+.drop-zone{border:1px dashed #444;background:var(--surface2);padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(233,69,96,0.05)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-icon{font-size:28px;margin-bottom:10px;display:block}
+.drop-text{font-size:11px;color:var(--text-dim);line-height:1.6}
+.file-ready{margin-top:8px;font-size:11px;padding:8px 12px;border:1px solid var(--success);color:var(--success);display:none}
+.btn{padding:10px 20px;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;border:none;cursor:pointer;transition:all 0.15s;font-weight:600}
+.btn-primary{background:var(--accent);color:#fff;width:100%;margin-top:8px}
+.btn-primary:hover{background:#ff5577}
+.btn-primary:disabled{background:#444;color:var(--text-dim);cursor:not-allowed}
+.btn-ghost{background:none;border:1px solid #444;color:var(--text-dim)}
+.btn-ghost:hover{border-color:var(--text-mid);color:var(--text)}
+.btn-danger{background:none;border:1px solid var(--accent);color:var(--accent);font-size:10px;padding:4px 10px;cursor:pointer;font-family:var(--mono);letter-spacing:1px}
+.btn-danger:hover{background:var(--accent);color:#fff}
+.progress-wrap{margin:14px 0}
+.progress-label{font-size:10px;color:var(--text-dim);margin-bottom:5px}
+.progress-bar{height:2px;background:#333;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);transition:width 0.3s ease;width:0%}
+.analysis-log{background:var(--surface2);border:1px solid #333;padding:16px;font-size:11px;line-height:1.8;max-height:300px;overflow-y:auto;white-space:pre-wrap;color:var(--text-mid);margin-bottom:12px}
+.analysis-log .hl{color:var(--accent2)}.analysis-log .q{color:var(--accent)}.analysis-log .sys{color:var(--text-dim);font-style:italic}
+.questions-panel{border:1px solid var(--accent);background:rgba(233,69,96,0.04);padding:16px;margin-top:16px}
+.questions-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.question-item{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #333}
+.question-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.question-text{font-size:12px;color:var(--text);margin-bottom:8px;line-height:1.6}
+.question-input{width:100%;background:var(--surface);border:1px solid #333;color:var(--text);font-family:var(--mono);font-size:11px;padding:8px 12px;outline:none;resize:vertical;min-height:50px}
+.final-box{border:1px solid var(--success);background:rgba(0,255,170,0.04);padding:16px;margin-top:16px}
+.divider{border:none;border-top:1px solid #333;margin:20px 0}
+.filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.filter-btn{font-size:10px;padding:5px 12px;background:none;border:1px solid #444;color:var(--text-dim);font-family:var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:0.5px}
+.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(233,69,96,0.08)}
+.video-card{border:1px solid #333;background:var(--surface2);padding:14px;margin-bottom:10px;transition:border-color 0.15s}
+.video-card:hover{border-color:var(--accent)}
+.video-card-inner{display:flex;gap:12px;align-items:flex-start}
+.video-thumb{width:80px;height:140px;object-fit:cover;flex-shrink:0;background:#111;border:1px solid #333}
+.video-thumb-placeholder{width:80px;height:140px;flex-shrink:0;background:#111;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text-dim)}
+.video-card-body{flex:1;min-width:0}
+.video-card-title{font-size:12px;color:var(--text);margin-bottom:8px;line-height:1.4}
+.video-metrics{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--text-dim)}
+.metric-val{color:var(--accent2)}
+.video-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.status-badge{font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border:1px solid var(--success);color:var(--success);display:inline-block;margin-bottom:6px}
+.copy-result{border:1px solid #333;background:var(--surface2);padding:16px;margin-bottom:10px;position:relative}
+.copy-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px}
+.copy-text{font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.copy-score{position:absolute;top:12px;right:12px;font-size:16px;font-family:var(--display);color:var(--accent2)}
+.ideas-content{background:var(--surface2);border:1px solid #333;padding:20px;font-size:12px;line-height:1.8;color:var(--text-mid)}
+.sidebar-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #333}
+.glosario-item{display:flex;gap:6px;margin-bottom:8px;font-size:11px}
+.glosario-key{color:var(--accent);font-style:italic;flex-shrink:0}
+.glosario-arrow{color:var(--text-dim);flex-shrink:0}
+.glosario-val{color:var(--text-mid)}
+.patron-item{font-size:10px;color:var(--text-mid);border:1px solid #333;padding:4px 8px;margin-bottom:5px;line-height:1.5}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text-dim);font-size:12px;line-height:2}
+.empty-icon{font-size:36px;display:block;margin-bottom:14px;opacity:0.3}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--accent);padding:24px;max-width:820px;width:100%;position:relative}
+.modal-close{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer}
+.modal-title{font-family:var(--display);font-size:18px;color:var(--accent);margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--text-dim);margin-bottom:14px}
+.modal-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #333;padding-bottom:8px}
+.modal-tab{background:none;border:none;color:var(--text-dim);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;padding:4px 12px}
+.modal-tab.active{color:var(--accent);border-bottom:2px solid var(--accent)}
+.modal-content{font-size:12px;line-height:1.8;color:var(--text-mid);white-space:pre-wrap;max-height:480px;overflow-y:auto}
+.comment-item{border-bottom:1px solid #333;padding:10px 0}
+.comment-likes{color:var(--accent2);font-size:10px;margin-bottom:4px}
+.comment-text{font-size:12px;color:var(--text-mid);line-height:1.5}
+.comment-author{font-size:10px;color:var(--text-dim);margin-top:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.flash{animation:fadeIn 0.3s ease}
+@keyframes dots{0%,20%{content:''}40%{content:'.'}60%{content:'..'}80%,100%{content:'...'}}
+.loading::after{content:'';animation:dots 1.2s steps(4,end) infinite}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:#444}
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">SUDACA<span style="color:var(--text-dim)">_</span>BRAIN</div>
+    <div class="login-sub">Ingresá tu contraseña para continuar</div>
+    <input type="password" class="login-input" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" autofocus />
+    <button class="login-btn" onclick="doLogin()">ENTRAR</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
 <header>
   <div class="logo">SUDACA<span>_</span>BRAIN</div>
   <div class="nav-tabs">
@@ -127,24 +147,21 @@ textarea.input-field { resize: vertical; min-height: 80px; }
     <button class="nav-tab" onclick="showScreen('library',this)">Biblioteca</button>
     <button class="nav-tab" onclick="showScreen('generator',this)">Generar Copy</button>
     <button class="nav-tab" onclick="showScreen('ideas',this)">Ideas</button>
+    <button class="nav-tab" onclick="logout()" style="margin-left:8px;border-color:#333;">Salir</button>
   </div>
 </header>
-
 <div class="stats-bar">
   <div class="stat">Videos: <span class="stat-val" id="stat-videos">0</span></div>
   <div class="stat">Glosario: <span class="stat-val" id="stat-glosario">0</span></div>
   <div class="stat">Patrones: <span class="stat-val" id="stat-patrones">0</span></div>
   <div class="stat" style="margin-left:auto;color:#444;" id="ver-badge">cargando...</div>
 </div>
-
 <div class="main">
 <div class="panel">
 
-<!-- UPLOAD -->
 <div class="screen active" id="screen-upload">
   <div class="section-title">NUEVO ANÁLISIS</div>
   <div class="section-sub">URL → AUTO ↓ → subí el video → copiá el texto → ANALIZAR</div>
-
   <div class="input-group">
     <label class="input-label">URL del Short / Video</label>
     <div style="display:flex;gap:8px;">
@@ -153,18 +170,15 @@ textarea.input-field { resize: vertical; min-height: 80px; }
     </div>
     <div id="yt-status" style="font-size:11px;margin-top:5px;color:var(--text-dim);"></div>
   </div>
-
   <div class="input-group">
     <label class="input-label">Título</label>
     <input type="text" class="input-field" id="yt-title" placeholder="Se completa automático..." style="color:var(--accent2);" />
   </div>
-
   <div class="row">
     <div class="input-group"><label class="input-label">Views</label><input type="number" class="input-field" id="yt-views" placeholder="Auto..." /></div>
     <div class="input-group"><label class="input-label">Likes</label><input type="number" class="input-field" id="yt-likes" placeholder="Auto..." /></div>
     <div class="input-group"><label class="input-label">Comentarios</label><input type="number" class="input-field" id="yt-comment-count" placeholder="Auto..." /></div>
   </div>
-
   <div class="input-group">
     <label class="input-label">Archivo de video</label>
     <div class="drop-zone" id="drop-zone">
@@ -174,19 +188,15 @@ textarea.input-field { resize: vertical; min-height: 80px; }
     </div>
     <div class="file-ready" id="file-ready"></div>
   </div>
-
   <div class="input-group">
     <label class="input-label">Copy original del video <span style="color:var(--accent);">★ MUY IMPORTANTE</span></label>
     <textarea class="input-field" id="copy-original" placeholder="Pegá acá exactamente lo que decís en el video. Sin esto la IA no entiende el sarcasmo y el humor..." style="min-height:100px;"></textarea>
   </div>
-
   <div class="input-group">
     <label class="input-label">Comentarios destacados <span style="color:var(--text-dim)">(se cargan automático con AUTO ↓)</span></label>
     <textarea class="input-field" id="yt-comments" placeholder="Se cargan automáticamente..." style="min-height:100px;"></textarea>
   </div>
-
   <button class="btn btn-primary" id="btn-analyze" onclick="startAnalysis()" disabled>ANALIZAR VIDEO</button>
-
   <hr class="divider" id="analysis-divider" style="display:none;">
   <div id="analysis-section" style="display:none;">
     <div class="progress-wrap">
@@ -203,7 +213,6 @@ textarea.input-field { resize: vertical; min-height: 80px; }
   </div>
 </div>
 
-<!-- LIBRARY -->
 <div class="screen" id="screen-library">
   <div class="section-title">BIBLIOTECA</div>
   <div class="section-sub">Todos los videos analizados</div>
@@ -216,7 +225,6 @@ textarea.input-field { resize: vertical; min-height: 80px; }
   <div id="video-list"></div>
 </div>
 
-<!-- GENERATOR -->
 <div class="screen" id="screen-generator">
   <div class="section-title">GENERAR COPY</div>
   <div class="section-sub">Describí el video y el sistema genera opciones basadas en lo que ya funcionó</div>
@@ -252,7 +260,6 @@ textarea.input-field { resize: vertical; min-height: 80px; }
   <div id="gen-results" style="margin-top:20px;"></div>
 </div>
 
-<!-- IDEAS -->
 <div class="screen" id="screen-ideas">
   <div class="section-title">IDEAS DE CONTENIDO</div>
   <div class="section-sub">Ideas generadas a partir de los comentarios de todos tus videos</div>
@@ -261,14 +268,13 @@ textarea.input-field { resize: vertical; min-height: 80px; }
 </div>
 
 </div>
-
-<!-- SIDEBAR -->
 <div class="sidebar">
   <div class="sidebar-title">Glosario Javier</div>
   <div id="glosario-list"><div style="font-size:11px;color:var(--text-dim);font-style:italic;">Se construye con cada video.</div></div>
   <hr class="divider">
   <div class="sidebar-title">Patrones identificados</div>
   <div id="patrones-list"><div style="font-size:11px;color:var(--text-dim);font-style:italic;">Emergen después de varios videos.</div></div>
+</div>
 </div>
 </div>
 
@@ -291,33 +297,85 @@ textarea.input-field { resize: vertical; min-height: 80px; }
       <button class="btn btn-primary" style="font-size:10px;padding:5px 12px;width:auto;margin:0;display:none;" id="save-copy-btn" onclick="saveCopy()">GUARDAR COPY</button>
       <span id="copy-save-status" style="font-size:10px;color:var(--success);"></span>
     </div>
-    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-danger" id="modal-delete-btn">ELIMINAR VIDEO</button>
       <a id="modal-yt-link" href="#" target="_blank" class="btn btn-ghost" style="font-size:10px;text-decoration:none;">VER EN YOUTUBE ↗</a>
       <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;" id="modal-update-comments-btn" onclick="updateComments()">↻ ACTUALIZAR COMENTARIOS</button>
-      <span id="comments-update-status" style="font-size:10px;color:var(--success);align-self:center;"></span>
+      <span id="comments-update-status" style="font-size:10px;color:var(--success);"></span>
     </div>
   </div>
 </div>
 
 <script>
-const API = 'https://sudaca-brain-backend-production.up.railway.app';
-const YT_KEY = 'AIzaSyCyxAexETnAgaBwS2gS9rhdv0bGgbw7_OM';
-let currentFile = null, currentAnalysisData = null, pendingQuestions = [], currentFilter = 'views', cachedVideos = [];
+const API='https://sudaca-brain-backend-production.up.railway.app';
+let TOKEN='',currentFile=null,currentAnalysisData=null,pendingQuestions=[],currentFilter='views',cachedVideos=[];
 
-// DB
-const DB = {
-  getVideos: async()=>{ try{const r=await fetch(`${API}/videos`);return r.ok?await r.json():[]}catch{return[]} },
-  saveVideo: async(v)=>{ await fetch(`${API}/videos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)}) },
-  deleteVideo: async(id)=>{ await fetch(`${API}/videos/${id}`,{method:'DELETE'}) },
-  getGlosario: async()=>{ try{const r=await fetch(`${API}/glosario`);return r.ok?await r.json():{}}catch{return{}} },
-  addGlosario: async(k,v)=>{ await fetch(`${API}/glosario`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})}) },
-  getPatrones: async()=>{ try{const r=await fetch(`${API}/patrones`);return r.ok?await r.json():[]}catch{return[]} },
-  addPatron: async(p)=>{ await fetch(`${API}/patrones`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patron:p})}) },
-  getStats: async()=>{ try{const r=await fetch(`${API}/stats`);return r.ok?await r.json():{videos:0,glosario:0,patrones:0}}catch{return{videos:0,glosario:0,patrones:0}} },
+// ---- AUTH ----
+function authHeaders(extra){return{'x-app-token':TOKEN,'Content-Type':'application/json',...extra}}
+function authFetch(url,opts={}){
+  return fetch(url,{...opts,headers:{...opts.headers,'x-app-token':TOKEN}});
+}
+
+async function doLogin(){
+  const pw=document.getElementById('login-password').value.trim();
+  const errEl=document.getElementById('login-error');
+  if(!pw){errEl.textContent='Ingresá la contraseña';return}
+  try{
+    const r=await fetch(`${API}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(d.ok){
+      TOKEN=d.token;
+      sessionStorage.setItem('sb_token',TOKEN);
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app').style.display='block';
+      await initApp();
+    } else {
+      errEl.textContent='Contraseña incorrecta';
+    }
+  }catch(e){errEl.textContent='Error de conexión'}
+}
+
+function logout(){
+  sessionStorage.removeItem('sb_token');
+  TOKEN='';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-password').value='';
+}
+
+// Check saved session
+(async()=>{
+  const saved=sessionStorage.getItem('sb_token');
+  if(saved){
+    TOKEN=saved;
+    // Verify token
+    try{
+      const r=await authFetch(`${API}/stats`);
+      if(r.ok){
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app').style.display='block';
+        await initApp();
+        return;
+      }
+    }catch(e){}
+    sessionStorage.removeItem('sb_token');
+    TOKEN='';
+  }
+})();
+
+// ---- DB ----
+const DB={
+  getVideos:async()=>{try{const r=await authFetch(`${API}/videos`);return r.ok?await r.json():[]}catch{return[]}},
+  saveVideo:async(v)=>{await authFetch(`${API}/videos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)})},
+  deleteVideo:async(id)=>{await authFetch(`${API}/videos/${id}`,{method:'DELETE'})},
+  getGlosario:async()=>{try{const r=await authFetch(`${API}/glosario`);return r.ok?await r.json():{}}catch{return{}}},
+  addGlosario:async(k,v)=>{await authFetch(`${API}/glosario`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})})},
+  getPatrones:async()=>{try{const r=await authFetch(`${API}/patrones`);return r.ok?await r.json():[]}catch{return[]}},
+  addPatron:async(p)=>{await authFetch(`${API}/patrones`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patron:p})})},
+  getStats:async()=>{try{const r=await authFetch(`${API}/stats`);return r.ok?await r.json():{videos:0,glosario:0,patrones:0}}catch{return{videos:0,glosario:0,patrones:0}}},
 };
 
-// YOUTUBE
+// ---- YOUTUBE (via backend proxy) ----
 function extractId(url){const ps=[/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,/youtu\.be\/([a-zA-Z0-9_-]{11})/];for(const p of ps){const m=url.match(p);if(m)return m[1]}return null}
 
 async function fetchYT(){
@@ -328,7 +386,7 @@ async function fetchYT(){
   if(!id){st.textContent='URL inválida.';return}
   st.textContent='Buscando...';st.style.color='var(--accent2)';
   try{
-    const vd=await(await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${id}&key=${YT_KEY}`)).json();
+    const vd=await(await authFetch(`${API}/yt/video/${id}`)).json();
     if(!vd.items?.length){st.textContent='Video no encontrado.';st.style.color='var(--accent)';return}
     const it=vd.items[0];
     document.getElementById('yt-title').value=it.snippet.title||'';
@@ -336,14 +394,14 @@ async function fetchYT(){
     document.getElementById('yt-likes').value=it.statistics.likeCount||'';
     document.getElementById('yt-comment-count').value=it.statistics.commentCount||'';
     st.textContent='Trayendo comentarios...';
-    const cd=await(await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${id}&order=relevance&maxResults=50&key=${YT_KEY}`)).json();
+    const cd=await(await authFetch(`${API}/yt/comments/${id}`)).json();
     if(cd.items?.length) document.getElementById('yt-comments').value=cd.items.map(c=>{const s=c.snippet.topLevelComment.snippet;return`[${s.likeCount} likes] ${s.authorDisplayName}: ${s.textDisplay}`}).join('\n\n');
     st.textContent='✓ Datos cargados correctamente';st.style.color='var(--success)';
     checkReady();
   }catch(e){st.textContent='Error: '+e.message;st.style.color='var(--accent)'}
 }
 
-// FILE
+// ---- FILE ----
 function handleFile(input){
   if(input.files[0]){
     currentFile=input.files[0];
@@ -354,27 +412,24 @@ function handleFile(input){
     checkReady();
   }
 }
-document.getElementById('yt-url').addEventListener('input',checkReady);
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('yt-url').addEventListener('input',checkReady);
+  const dz=document.getElementById('drop-zone');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over')});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0]){const fi=document.getElementById('video-file');fi.files=e.dataTransfer.files;handleFile(fi)}});
+});
 function checkReady(){
   const ok=document.getElementById('yt-url').value.trim().length>10&&currentFile!==null;
   const btn=document.getElementById('btn-analyze');
   btn.disabled=!ok;
   if(ok)btn.textContent='▶ ANALIZAR VIDEO';
 }
-const dz=document.getElementById('drop-zone');
-dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over')});
-dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
-dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0]){const fi=document.getElementById('video-file');fi.files=e.dataTransfer.files;handleFile(fi)}});
 
-// ANALYSIS
+// ---- ANALYSIS ----
 async function startAnalysis(){
   const url=document.getElementById('yt-url').value.trim();
-
-  // Auto-fetch if comments empty
-  if(!document.getElementById('yt-comments').value.trim()) {
-    await fetchYT();
-  }
-
+  if(!document.getElementById('yt-comments').value.trim())await fetchYT();
   const title=document.getElementById('yt-title').value.trim();
   const views=document.getElementById('yt-views').value;
   const likes=document.getElementById('yt-likes').value;
@@ -387,12 +442,10 @@ async function startAnalysis(){
   const btn=document.getElementById('btn-analyze');
   btn.disabled=true;btn.textContent='⏳ ANALIZANDO... NO CERRÉS ESTA PÁGINA';btn.style.background='#444';
   document.getElementById('analysis-section').scrollIntoView({behavior:'smooth'});
-
   setProgress(10,'Preparando video');
   appendLog('<span class="sys">→ Enviando video al servidor...</span>\n');
 
-  const [glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
-
+  const[glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
   try{
     const fd=new FormData();
     fd.append('video',currentFile);
@@ -402,12 +455,10 @@ async function startAnalysis(){
     fd.append('copy_original',copy_original);
     fd.append('glosario',JSON.stringify(glosario));
     fd.append('patrones',JSON.stringify(patrones));
-
     setProgress(30,'Subiendo al servidor');
-    const resp=await fetch(`${API}/analyze`,{method:'POST',body:fd});
-    setProgress(75,'Claude analizando frames');
+    const resp=await fetch(`${API}/analyze`,{method:'POST',headers:{'x-app-token':TOKEN},body:fd});
+    setProgress(75,'Claude analizando frames y audio');
     const data=await resp.json();
-
     if(data.error){appendLog(`<span class="sys">Error: ${data.error}</span>\n`);resetBtn();return}
     setProgress(90,'Extrayendo insights');
     currentAnalysisData={url,title,views:parseInt(views)||0,likes:parseInt(likes)||0,comment_count:parseInt(comment_count)||0,comments,copy_original,analysis:data.analysis};
@@ -416,10 +467,7 @@ async function startAnalysis(){
     setProgress(100,'✓ Análisis completo');
     if(pendingQuestions.length>0)showQs(pendingQuestions);
     else await finalizeAndSave();
-  }catch(err){
-    appendLog(`<span class="sys">Error: ${err.message}</span>\n`);
-    resetBtn();
-  }
+  }catch(err){appendLog(`<span class="sys">Error: ${err.message}</span>\n`);resetBtn()}
 }
 
 function resetBtn(){const b=document.getElementById('btn-analyze');b.disabled=false;b.textContent='▶ ANALIZAR VIDEO';b.style.background='var(--accent)'}
@@ -434,7 +482,7 @@ async function submitAnswers(){
   appendLog('\n<span class="sys">→ Incorporando respuestas...</span>\n');
   if(answers.length>0){
     try{
-      const r=await fetch(`${API}/refine`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({analysis:currentAnalysisData.analysis,answers})});
+      const r=await authFetch(`${API}/refine`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({analysis:currentAnalysisData.analysis,answers})});
       const d=await r.json();
       currentAnalysisData.analysis+='\n\n## ACTUALIZACIÓN POST-RESPUESTAS\n'+(d.refined||'');
       currentAnalysisData.answers=answers;
@@ -442,7 +490,6 @@ async function submitAnswers(){
   }
   await finalizeAndSave();
 }
-
 async function finalizeAndSave(){
   for(const m of currentAnalysisData.analysis.matchAll(/([^→\n]{3,50})\s*→\s*([^\n]+)/g)){
     const k=m[1].trim().replace(/^["\*#\s]+|["\*#\s]+$/g,'');
@@ -451,47 +498,34 @@ async function finalizeAndSave(){
   }
   const ps=currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
   if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim());
-
-  await DB.saveVideo({
-    url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),
-    views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,
-    analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,
-    comments_raw:currentAnalysisData.comments,answers:currentAnalysisData.answers||[]
-  });
-
+  await DB.saveVideo({url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,comments_raw:currentAnalysisData.comments,answers:currentAnalysisData.answers||[]});
   await renderSidebar();
   const stats=await DB.getStats();
   updateStats(stats);
-
   document.getElementById('final-result').innerHTML=`<div class="final-box flash"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--success);margin-bottom:10px;">✓ GUARDADO EN LA NUBE</div><div style="font-size:12px;color:var(--success);">Análisis guardado. Accesible desde cualquier dispositivo.</div><div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Videos: ${stats.videos} | Glosario: ${stats.glosario} | Patrones: ${stats.patrones}</div></div>`;
-  // Reset button
   const btn=document.getElementById('btn-analyze');
   btn.textContent='✓ ANÁLISIS COMPLETADO';btn.style.background='var(--success)';btn.style.color='#000';btn.disabled=false;
 }
 
-// LIBRARY
+// ---- LIBRARY ----
 function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderVideoList(cachedVideos)}
-
 function getThumbnail(url){const id=extractId(url);return id?`https://img.youtube.com/vi/${id}/mqdefault.jpg`:null}
-
 function renderVideoList(videos){
   const c=document.getElementById('video-list');
   if(!videos?.length){c.innerHTML='<div class="empty-state"><span class="empty-icon">▶</span>No hay videos analizados.<br>Cargá tu primer video.</div>';return}
   const sorted=[...videos].sort((a,b)=>currentFilter==='timestamp'?new Date(b.timestamp)-new Date(a.timestamp):(parseInt(b[currentFilter])||0)-(parseInt(a[currentFilter])||0));
   c.innerHTML=sorted.map(v=>{
     const th=getThumbnail(v.url);
-    const thEl=th?`<img class="video-thumb" src="${th}" onerror="this.style.display='none'" alt="">` :`<div class="video-thumb-placeholder">▶</div>`;
+    const thEl=th?`<img class="video-thumb" src="${th}" onerror="this.style.display='none'" alt="">`:`<div class="video-thumb-placeholder">▶</div>`;
     return`<div class="video-card"><div class="video-card-inner">${thEl}<div class="video-card-body"><div class="status-badge">✓ Analizado</div><div class="video-card-title">${v.title||v.url}</div><div class="video-metrics"><span>👁 <span class="metric-val">${parseInt(v.views)?.toLocaleString('es-AR')||'—'}</span></span><span>❤️ <span class="metric-val">${parseInt(v.likes)?.toLocaleString('es-AR')||'—'}</span></span><span>💬 <span class="metric-val">${parseInt(v.comment_count)?.toLocaleString('es-AR')||'—'}</span></span></div><div class="video-actions"><button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;" onclick="openModal(${v.id})">VER ANÁLISIS</button><button class="btn btn-danger" onclick="deleteVideo(${v.id},event)">ELIMINAR</button></div></div></div></div>`;
   }).join('');
   window._cv=sorted;
 }
-
 async function renderLibrary(){
   document.getElementById('video-list').innerHTML='<div style="font-size:11px;color:var(--text-dim);padding:20px 0;">Cargando<span class="loading"></span></div>';
   cachedVideos=await DB.getVideos();
   renderVideoList(cachedVideos);
 }
-
 async function deleteVideo(id,e){
   e?.stopPropagation();
   if(!confirm('¿Eliminás este video de la biblioteca?'))return;
@@ -501,7 +535,7 @@ async function deleteVideo(id,e){
   updateStats(await DB.getStats());
 }
 
-// MODAL
+// ---- MODAL ----
 function openModal(id){
   const video=(window._cv||cachedVideos).find(v=>v.id===id);
   if(!video)return;
@@ -509,122 +543,21 @@ function openModal(id){
   document.getElementById('modal-sub').textContent=`👁 ${parseInt(video.views)?.toLocaleString('es-AR')||'—'} · ❤️ ${parseInt(video.likes)?.toLocaleString('es-AR')||'—'} · 💬 ${parseInt(video.comment_count)?.toLocaleString('es-AR')||'—'}`;
   document.getElementById('modal-analysis').textContent=video.analysis||'Sin análisis';
   document.getElementById('modal-yt-link').href=video.url||'#';
-  document.getElementById('modal-update-comments-btn').setAttribute('data-video-id', id);
-  document.getElementById('modal-update-comments-btn').setAttribute('data-video-url', video.url||'');
+  document.getElementById('modal-update-comments-btn').setAttribute('data-video-id',id);
+  document.getElementById('modal-update-comments-btn').setAttribute('data-video-url',video.url||'');
   const ce=document.getElementById('modal-comments');
   if(video.comments_raw){
     const lines=video.comments_raw.split('\n\n').filter(l=>l.trim());
     ce.innerHTML=lines.map(line=>{const m=line.match(/\[(\d+) likes\] ([^:]+): (.+)/s);return m?`<div class="comment-item"><div class="comment-likes">❤️ ${parseInt(m[1]).toLocaleString()} likes</div><div class="comment-text">${m[3]}</div><div class="comment-author">— ${m[2]}</div></div>`:`<div class="comment-item"><div class="comment-text">${line}</div></div>`}).join('');
-  }else{ce.innerHTML='<div style="color:var(--text-dim);font-size:12px;">Sin comentarios guardados.</div>'}
+  }else{ce.innerHTML='<div style="color:var(--text-dim);font-size:12px;">Sin comentarios guardados. Usá ↻ ACTUALIZAR COMENTARIOS.</div>'}
   document.getElementById('modal-copy').textContent=video.copy_original||'Sin copy original guardado.';
-  document.getElementById('modal-copy').setAttribute('data-video-id', id);
-  document.getElementById('modal-copy').setAttribute('data-original', video.copy_original||'');
+  document.getElementById('modal-copy').setAttribute('data-video-id',id);
   document.getElementById('modal-delete-btn').onclick=()=>{deleteVideo(id);closeModal()};
   switchTab('analysis',document.querySelector('.modal-tab'));
   document.getElementById('modal-overlay').classList.add('open');
 }
-async function updateComments(){
-  const btn=document.getElementById('modal-update-comments-btn');
-  const statusEl=document.getElementById('comments-update-status');
-  const id=parseInt(btn.getAttribute('data-video-id'));
-  const url=btn.getAttribute('data-video-url');
-  const videoId=extractId(url);
-  if(!videoId){statusEl.textContent='Error: URL inválida';return}
-
-  btn.disabled=true;
-  statusEl.textContent='Trayendo comentarios...';
-  statusEl.style.color='var(--accent2)';
-
-  try{
-    const cd=await(await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&order=relevance&maxResults=50&key=${YT_KEY}`)).json();
-    if(!cd.items?.length){statusEl.textContent='Sin comentarios encontrados.';btn.disabled=false;return}
-
-    const commentsRaw=cd.items.map(c=>{
-      const s=c.snippet.topLevelComment.snippet;
-      return`[${s.likeCount} likes] ${s.authorDisplayName}: ${s.textDisplay}`;
-    }).join('\n\n');
-
-    // Update in DB
-    const videos=await DB.getVideos();
-    const video=videos.find(v=>v.id===id);
-    if(!video){statusEl.textContent='Error: video no encontrado';btn.disabled=false;return}
-    video.comments_raw=commentsRaw;
-    await DB.saveVideo(video);
-
-    // Update cache
-    cachedVideos=cachedVideos.map(v=>v.id===id?{...v,comments_raw:commentsRaw}:v);
-    if(window._cv)window._cv=window._cv.map(v=>v.id===id?{...v,comments_raw:commentsRaw}:v);
-
-    // Refresh comments tab in modal
-    const ce=document.getElementById('modal-comments');
-    const lines=commentsRaw.split('\n\n').filter(l=>l.trim());
-    ce.innerHTML=lines.map(line=>{
-      const m=line.match(/\[(\d+) likes\] ([^:]+): (.+)/s);
-      return m?`<div class="comment-item"><div class="comment-likes">❤️ ${parseInt(m[1]).toLocaleString()} likes</div><div class="comment-text">${m[3]}</div><div class="comment-author">— ${m[2]}</div></div>`:`<div class="comment-item"><div class="comment-text">${line}</div></div>`;
-    }).join('');
-
-    statusEl.textContent=`✓ ${cd.items.length} comentarios actualizados`;
-    statusEl.style.color='var(--success)';
-    setTimeout(()=>statusEl.textContent='',4000);
-  }catch(e){
-    statusEl.textContent='Error: '+e.message;
-    statusEl.style.color='var(--accent)';
-  }
-  btn.disabled=false;
-}
-
 function closeModalClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
-
-function toggleEditCopy(btn){
-  const el=document.getElementById('modal-copy');
-  const saveBtn=document.getElementById('save-copy-btn');
-  const isEditing=el.contentEditable==='true';
-  if(isEditing){
-    el.contentEditable='false';
-    el.style.border='none';
-    el.style.background='transparent';
-    btn.textContent='✏ EDITAR';
-    saveBtn.style.display='none';
-  } else {
-    el.contentEditable='true';
-    el.style.border='1px solid var(--accent2)';
-    el.style.background='var(--surface2)';
-    el.style.padding='12px';
-    el.focus();
-    btn.textContent='CANCELAR';
-    saveBtn.style.display='inline-block';
-  }
-}
-
-async function saveCopy(){
-  const el=document.getElementById('modal-copy');
-  const id=parseInt(el.getAttribute('data-video-id'));
-  const newCopy=el.textContent.trim();
-  const statusEl=document.getElementById('copy-save-status');
-
-  statusEl.textContent='Guardando...';
-
-  // Find video and update
-  const videos=await DB.getVideos();
-  const video=videos.find(v=>v.id===id);
-  if(!video){statusEl.textContent='Error: video no encontrado';return}
-
-  video.copy_original=newCopy;
-  await DB.saveVideo(video);
-
-  // Update cache
-  if(window._cv){const cv=window._cv.find(v=>v.id===id);if(cv)cv.copy_original=newCopy;}
-  cachedVideos=cachedVideos.map(v=>v.id===id?{...v,copy_original:newCopy}:v);
-
-  el.contentEditable='false';
-  el.style.border='none';
-  el.style.background='transparent';
-  document.querySelector('#copy-edit-bar .btn-ghost').textContent='✏ EDITAR';
-  document.getElementById('save-copy-btn').style.display='none';
-  statusEl.textContent='✓ Copy guardado';
-  setTimeout(()=>statusEl.textContent='',3000);
-}
 function switchTab(tab,btn){
   document.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
@@ -633,8 +566,60 @@ function switchTab(tab,btn){
   document.getElementById('modal-copy').style.display=tab==='copy'?'block':'none';
   document.getElementById('copy-edit-bar').style.display=tab==='copy'?'flex':'none';
 }
+function toggleEditCopy(btn){
+  const el=document.getElementById('modal-copy');
+  const saveBtn=document.getElementById('save-copy-btn');
+  const isEditing=el.contentEditable==='true';
+  if(isEditing){el.contentEditable='false';el.style.border='none';el.style.background='transparent';btn.textContent='✏ EDITAR';saveBtn.style.display='none';}
+  else{el.contentEditable='true';el.style.border='1px solid var(--accent2)';el.style.background='var(--surface2)';el.style.padding='12px';el.focus();btn.textContent='CANCELAR';saveBtn.style.display='inline-block';}
+}
+async function saveCopy(){
+  const el=document.getElementById('modal-copy');
+  const id=parseInt(el.getAttribute('data-video-id'));
+  const newCopy=el.textContent.trim();
+  const statusEl=document.getElementById('copy-save-status');
+  statusEl.textContent='Guardando...';
+  const videos=await DB.getVideos();
+  const video=videos.find(v=>v.id===id);
+  if(!video){statusEl.textContent='Error';return}
+  video.copy_original=newCopy;
+  await DB.saveVideo(video);
+  cachedVideos=cachedVideos.map(v=>v.id===id?{...v,copy_original:newCopy}:v);
+  if(window._cv)window._cv=window._cv.map(v=>v.id===id?{...v,copy_original:newCopy}:v);
+  el.contentEditable='false';el.style.border='none';el.style.background='transparent';
+  document.querySelector('#copy-edit-bar .btn-ghost').textContent='✏ EDITAR';
+  document.getElementById('save-copy-btn').style.display='none';
+  statusEl.textContent='✓ Copy guardado';setTimeout(()=>statusEl.textContent='',3000);
+}
+async function updateComments(){
+  const btn=document.getElementById('modal-update-comments-btn');
+  const statusEl=document.getElementById('comments-update-status');
+  const id=parseInt(btn.getAttribute('data-video-id'));
+  const url=btn.getAttribute('data-video-url');
+  const videoId=extractId(url);
+  if(!videoId){statusEl.textContent='URL inválida';return}
+  btn.disabled=true;statusEl.textContent='Trayendo comentarios...';statusEl.style.color='var(--accent2)';
+  try{
+    const cd=await(await authFetch(`${API}/yt/comments/${videoId}`)).json();
+    if(!cd.items?.length){statusEl.textContent='Sin comentarios.';btn.disabled=false;return}
+    const commentsRaw=cd.items.map(c=>{const s=c.snippet.topLevelComment.snippet;return`[${s.likeCount} likes] ${s.authorDisplayName}: ${s.textDisplay}`}).join('\n\n');
+    const videos=await DB.getVideos();
+    const video=videos.find(v=>v.id===id);
+    if(!video){statusEl.textContent='Error';btn.disabled=false;return}
+    video.comments_raw=commentsRaw;
+    await DB.saveVideo(video);
+    cachedVideos=cachedVideos.map(v=>v.id===id?{...v,comments_raw:commentsRaw}:v);
+    if(window._cv)window._cv=window._cv.map(v=>v.id===id?{...v,comments_raw:commentsRaw}:v);
+    const ce=document.getElementById('modal-comments');
+    const lines=commentsRaw.split('\n\n').filter(l=>l.trim());
+    ce.innerHTML=lines.map(line=>{const m=line.match(/\[(\d+) likes\] ([^:]+): (.+)/s);return m?`<div class="comment-item"><div class="comment-likes">❤️ ${parseInt(m[1]).toLocaleString()} likes</div><div class="comment-text">${m[3]}</div><div class="comment-author">— ${m[2]}</div></div>`:`<div class="comment-item"><div class="comment-text">${line}</div></div>`}).join('');
+    statusEl.textContent=`✓ ${cd.items.length} comentarios actualizados`;statusEl.style.color='var(--success)';
+    setTimeout(()=>statusEl.textContent='',4000);
+  }catch(e){statusEl.textContent='Error: '+e.message;statusEl.style.color='var(--accent)'}
+  btn.disabled=false;
+}
 
-// GENERATE COPY
+// ---- GENERATE COPY ----
 async function generateCopy(){
   const desc=document.getElementById('gen-desc').value.trim();
   if(!desc){alert('Describí el video primero');return}
@@ -642,10 +627,10 @@ async function generateCopy(){
   document.getElementById('gen-results').innerHTML='<div style="font-size:12px;color:var(--text-dim);padding:20px 0;">Generando<span class="loading"></span></div>';
   const videos=await DB.getVideos();
   if(!videos.length){document.getElementById('gen-results').innerHTML='<div class="empty-state">Necesitás al menos un video analizado.</div>';document.getElementById('btn-generate').disabled=false;return}
-  const [glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
+  const[glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
   const ctx=videos.slice(0,5).map(v=>({views:v.views,likes:v.likes,analysis:(v.analysis||'').substring(0,600)}));
   try{
-    const r=await fetch(`${API}/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,momento:document.getElementById('gen-momento').value,tono:document.getElementById('gen-tono').value,glosario,patrones,contextVideos:ctx})});
+    const r=await authFetch(`${API}/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,momento:document.getElementById('gen-momento').value,tono:document.getElementById('gen-tono').value,glosario,patrones,contextVideos:ctx})});
     const d=await r.json();
     const opts=(d.copy||d.error||'').split(/OPCIÓN_\d+:/g).filter(s=>s.trim());
     document.getElementById('gen-results').innerHTML=opts.length?opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join(''):`<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
@@ -653,14 +638,14 @@ async function generateCopy(){
   document.getElementById('btn-generate').disabled=false;
 }
 
-// IDEAS
+// ---- IDEAS ----
 async function generateIdeas(){
   document.getElementById('btn-ideas').disabled=true;
   document.getElementById('ideas-results').innerHTML='<div style="font-size:12px;color:var(--text-dim);padding:20px 0;">Analizando comentarios<span class="loading"></span></div>';
   const videos=await DB.getVideos();
   if(!videos.length){document.getElementById('ideas-results').innerHTML='<div class="empty-state">Necesitás videos analizados primero.</div>';document.getElementById('btn-ideas').disabled=false;return}
   try{
-    const r=await fetch(`${API}/ideas`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({videos:videos.map(v=>({title:v.title,comments_raw:v.comments_raw,analysis:(v.analysis||'').substring(0,500)}))})});
+    const r=await authFetch(`${API}/ideas`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({videos:videos.map(v=>({title:v.title,comments_raw:v.comments_raw,analysis:(v.analysis||'').substring(0,500)}))})});
     const d=await r.json();
     const txt=d.ideas||d.error||'Sin resultado';
     document.getElementById('ideas-results').innerHTML=`<div class="ideas-content flash">${txt.replace(/## (.+)/g,'<strong style="color:var(--accent2);">■ $1</strong>').replace(/\n/g,'<br>')}</div>`;
@@ -668,7 +653,7 @@ async function generateIdeas(){
   document.getElementById('btn-ideas').disabled=false;
 }
 
-// SIDEBAR
+// ---- SIDEBAR ----
 async function renderSidebar(){
   const[g,p]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
   document.getElementById('glosario-list').innerHTML=Object.keys(g).length?Object.entries(g).slice(-12).map(([k,v])=>`<div class="glosario-item"><span class="glosario-key">${k}</span><span class="glosario-arrow">→</span><span class="glosario-val">${v}</span></div>`).join(''):'<div style="font-size:11px;color:var(--text-dim);font-style:italic;">Se construye con cada video.</div>';
@@ -676,7 +661,7 @@ async function renderSidebar(){
 }
 function updateStats(s){document.getElementById('stat-videos').textContent=s?.videos||0;document.getElementById('stat-glosario').textContent=s?.glosario||0;document.getElementById('stat-patrones').textContent=s?.patrones||0}
 
-// NAV
+// ---- NAV ----
 function showScreen(name,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -686,17 +671,17 @@ function showScreen(name,btn){
   if(name==='generator'||name==='ideas')renderSidebar();
 }
 
-// UTILS
+// ---- UTILS ----
 function setProgress(pct,label){document.getElementById('progress-fill').style.width=pct+'%';const el=document.getElementById('progress-label');el.textContent=label;el.classList.toggle('loading',pct<100)}
 function appendLog(t){const l=document.getElementById('analysis-log');l.innerHTML+=t;l.scrollTop=l.scrollHeight}
 function fmtLog(t){return t.replace(/## (.+)/g,'\n<span class="hl">■ $1</span>\n').replace(/PREGUNTA_\d+: (.+)/g,'<span class="q">⚡ $1</span>')+'\n'}
 
-// INIT
-(async()=>{
+// ---- INIT ----
+async function initApp(){
   const[stats]=await Promise.all([DB.getStats(),renderSidebar()]);
   updateStats(stats);
   try{const r=await fetch(`${API}/`);const d=await r.json();document.getElementById('ver-badge').textContent=`backend v${d.version}`}catch(e){}
-})();
+}
 </script>
 </body>
 </html>
