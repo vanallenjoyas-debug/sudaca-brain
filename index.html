@@ -376,7 +376,7 @@ function logout(){
 // ---- DB ----
 const DB={
   getVideos:async()=>{try{const r=await authFetch(`${API}/videos`);return r.ok?await r.json():[]}catch{return[]}},
-  saveVideo:async(v)=>{await authFetch(`${API}/videos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)})},
+  saveVideo:async(v)=>{try{const r=await authFetch(`${API}/videos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});return r.ok?await r.json():null}catch(e){console.error('saveVideo error:',e);return null}},
   deleteVideo:async(id)=>{await authFetch(`${API}/videos/${id}`,{method:'DELETE'})},
   getGlosario:async()=>{try{const r=await authFetch(`${API}/glosario`);return r.ok?await r.json():{}}catch{return{}}},
   addGlosario:async(k,v)=>{await authFetch(`${API}/glosario`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})})},
@@ -503,14 +503,28 @@ async function submitAnswers(){
   await finalizeAndSave();
 }
 async function finalizeAndSave(){
-  for(const m of currentAnalysisData.analysis.matchAll(/([^→\n]{3,50})\s*→\s*([^\n]+)/g)){
-    const k=m[1].trim().replace(/^["\*#\s]+|["\*#\s]+$/g,'');
-    const v=m[2].trim();
-    if(k.length>2&&k.length<50)await DB.addGlosario(k,v);
+  // Verificar si la URL ya existe — si sí, no tocar glosario ni patrones
+  const existingVideos = await DB.getVideos();
+  const alreadyExists = existingVideos.some(v => v.url === currentAnalysisData.url);
+
+  if(!alreadyExists){
+    for(const m of currentAnalysisData.analysis.matchAll(/([^→\n]{3,50})\s*→\s*([^\n]+)/g)){
+      const k=m[1].trim().replace(/^["\*#\s]+|["\*#\s]+$/g,'');
+      const v=m[2].trim();
+      if(k.length>2&&k.length<50)await DB.addGlosario(k,v);
+    }
+    const ps=currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
+    if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim());
   }
-  const ps=currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
-  if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim());
-  await DB.saveVideo({url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,comments_raw:currentAnalysisData.comments,frames_data:currentAnalysisData.frames_data||[],answers:currentAnalysisData.answers||[]});
+
+  const saveResult = await DB.saveVideo({url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,comments_raw:currentAnalysisData.comments,frames_data:currentAnalysisData.frames_data||[],answers:currentAnalysisData.answers||[]});
+  
+  if(!saveResult){
+    document.getElementById('final-result').innerHTML=`<div class="final-box" style="border-color:var(--accent);"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;">⚠ ERROR AL GUARDAR</div><div style="font-size:12px;color:var(--accent);">El análisis no se guardó. Intentá de nuevo.</div></div>`;
+    const btn=document.getElementById('btn-analyze');
+    btn.textContent='▶ ANALIZAR VIDEO';btn.style.background='var(--accent)';btn.style.color='#fff';btn.disabled=false;
+    return;
+  }
   await renderSidebar();
   const stats=await DB.getStats();
   updateStats(stats);
