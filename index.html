@@ -684,6 +684,7 @@ async function generateCopyWithVideo(){
     document.getElementById('gen-results').innerHTML = opts.length
       ? opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('')
       : `<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
+    document.getElementById('gen-clear-bar').style.display='block';
   }catch(err){
     document.getElementById('gen-results').innerHTML = `<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
   }
