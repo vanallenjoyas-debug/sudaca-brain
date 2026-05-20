@@ -294,6 +294,8 @@ textarea.input-field { resize: vertical; min-height: 80px; }
     <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-danger" id="modal-delete-btn">ELIMINAR VIDEO</button>
       <a id="modal-yt-link" href="#" target="_blank" class="btn btn-ghost" style="font-size:10px;text-decoration:none;">VER EN YOUTUBE ↗</a>
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;" id="modal-update-comments-btn" onclick="updateComments()">↻ ACTUALIZAR COMENTARIOS</button>
+      <span id="comments-update-status" style="font-size:10px;color:var(--success);align-self:center;"></span>
     </div>
   </div>
 </div>
@@ -507,6 +509,8 @@ function openModal(id){
   document.getElementById('modal-sub').textContent=`👁 ${parseInt(video.views)?.toLocaleString('es-AR')||'—'} · ❤️ ${parseInt(video.likes)?.toLocaleString('es-AR')||'—'} · 💬 ${parseInt(video.comment_count)?.toLocaleString('es-AR')||'—'}`;
   document.getElementById('modal-analysis').textContent=video.analysis||'Sin análisis';
   document.getElementById('modal-yt-link').href=video.url||'#';
+  document.getElementById('modal-update-comments-btn').setAttribute('data-video-id', id);
+  document.getElementById('modal-update-comments-btn').setAttribute('data-video-url', video.url||'');
   const ce=document.getElementById('modal-comments');
   if(video.comments_raw){
     const lines=video.comments_raw.split('\n\n').filter(l=>l.trim());
@@ -519,6 +523,56 @@ function openModal(id){
   switchTab('analysis',document.querySelector('.modal-tab'));
   document.getElementById('modal-overlay').classList.add('open');
 }
+async function updateComments(){
+  const btn=document.getElementById('modal-update-comments-btn');
+  const statusEl=document.getElementById('comments-update-status');
+  const id=parseInt(btn.getAttribute('data-video-id'));
+  const url=btn.getAttribute('data-video-url');
+  const videoId=extractId(url);
+  if(!videoId){statusEl.textContent='Error: URL inválida';return}
+
+  btn.disabled=true;
+  statusEl.textContent='Trayendo comentarios...';
+  statusEl.style.color='var(--accent2)';
+
+  try{
+    const cd=await(await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&order=relevance&maxResults=50&key=${YT_KEY}`)).json();
+    if(!cd.items?.length){statusEl.textContent='Sin comentarios encontrados.';btn.disabled=false;return}
+
+    const commentsRaw=cd.items.map(c=>{
+      const s=c.snippet.topLevelComment.snippet;
+      return`[${s.likeCount} likes] ${s.authorDisplayName}: ${s.textDisplay}`;
+    }).join('\n\n');
+
+    // Update in DB
+    const videos=await DB.getVideos();
+    const video=videos.find(v=>v.id===id);
+    if(!video){statusEl.textContent='Error: video no encontrado';btn.disabled=false;return}
+    video.comments_raw=commentsRaw;
+    await DB.saveVideo(video);
+
+    // Update cache
+    cachedVideos=cachedVideos.map(v=>v.id===id?{...v,comments_raw:commentsRaw}:v);
+    if(window._cv)window._cv=window._cv.map(v=>v.id===id?{...v,comments_raw:commentsRaw}:v);
+
+    // Refresh comments tab in modal
+    const ce=document.getElementById('modal-comments');
+    const lines=commentsRaw.split('\n\n').filter(l=>l.trim());
+    ce.innerHTML=lines.map(line=>{
+      const m=line.match(/\[(\d+) likes\] ([^:]+): (.+)/s);
+      return m?`<div class="comment-item"><div class="comment-likes">❤️ ${parseInt(m[1]).toLocaleString()} likes</div><div class="comment-text">${m[3]}</div><div class="comment-author">— ${m[2]}</div></div>`:`<div class="comment-item"><div class="comment-text">${line}</div></div>`;
+    }).join('');
+
+    statusEl.textContent=`✓ ${cd.items.length} comentarios actualizados`;
+    statusEl.style.color='var(--success)';
+    setTimeout(()=>statusEl.textContent='',4000);
+  }catch(e){
+    statusEl.textContent='Error: '+e.message;
+    statusEl.style.color='var(--accent)';
+  }
+  btn.disabled=false;
+}
+
 function closeModalClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
 
