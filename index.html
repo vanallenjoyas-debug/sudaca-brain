@@ -133,7 +133,7 @@ textarea.input-field{resize:vertical;min-height:80px}
     <div class="login-logo">SUDACA<span style="color:var(--text-dim)">_</span>BRAIN</div>
     <div class="login-sub">Ingresá tu contraseña para continuar</div>
     <input type="password" class="login-input" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" autofocus />
-    <button class="login-btn" onclick="doLogin()">ENTRAR</button>
+    <button class="login-btn" id="login-btn">ENTRAR</button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
@@ -452,6 +452,8 @@ function handleFile(input){
   }
 }
 document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('login-password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   document.getElementById('yt-url').addEventListener('input',checkReady);
   const dz=document.getElementById('drop-zone');
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over')});
