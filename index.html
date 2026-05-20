@@ -227,36 +227,61 @@ textarea.input-field{resize:vertical;min-height:80px}
 
 <div class="screen" id="screen-generator">
   <div class="section-title">GENERAR COPY</div>
-  <div class="section-sub">Describí el video y el sistema genera opciones basadas en lo que ya funcionó</div>
-  <div class="input-group">
-    <label class="input-label">¿De qué trata el video?</label>
-    <textarea class="input-field" id="gen-desc" placeholder="Ej: voy a mostrar cómo refinar plata con ácido nítrico..." style="min-height:90px;"></textarea>
+  <div class="section-sub">Describí el video o subilo directamente para copy específico</div>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px;">
+    <button class="filter-btn active" id="gen-mode-text" onclick="setGenMode('text',this)">📝 CON DESCRIPCIÓN</button>
+    <button class="filter-btn" id="gen-mode-video" onclick="setGenMode('video',this)">🎬 CON VIDEO</button>
   </div>
-  <div class="row">
+
+  <!-- TEXT MODE -->
+  <div id="gen-text-mode">
     <div class="input-group">
-      <label class="input-label">Momento del proceso</label>
-      <select class="input-field" id="gen-momento">
-        <option value="">Seleccioná...</option>
-        <option value="proceso_quimico">Proceso químico / reacción</option>
-        <option value="fundicion">Fundición / fuego</option>
-        <option value="mecanico">Trabajo mecánico / herramientas</option>
-        <option value="resultado">Resultado final / pieza terminada</option>
-        <option value="tutorial">Tutorial paso a paso</option>
-        <option value="otro">Otro</option>
-      </select>
+      <label class="input-label">¿De qué trata el video?</label>
+      <textarea class="input-field" id="gen-desc" placeholder="Ej: voy a mostrar cómo refinar plata con ácido nítrico..." style="min-height:90px;"></textarea>
     </div>
-    <div class="input-group">
-      <label class="input-label">Tono</label>
-      <select class="input-field" id="gen-tono">
-        <option value="auto">Que lo decida la IA</option>
-        <option value="sarcastico">Sarcástico / irónico</option>
-        <option value="dramatico">Dramático / épico</option>
-        <option value="didactico">Didáctico con humor</option>
-        <option value="mistico">Místico / esotérico</option>
-      </select>
+    <div class="row">
+      <div class="input-group">
+        <label class="input-label">Momento del proceso</label>
+        <select class="input-field" id="gen-momento">
+          <option value="">Seleccioná...</option>
+          <option value="proceso_quimico">Proceso químico / reacción</option>
+          <option value="fundicion">Fundición / fuego</option>
+          <option value="mecanico">Trabajo mecánico / herramientas</option>
+          <option value="resultado">Resultado final / pieza terminada</option>
+          <option value="tutorial">Tutorial paso a paso</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Tono</label>
+        <select class="input-field" id="gen-tono">
+          <option value="auto">Que lo decida la IA</option>
+          <option value="sarcastico">Sarcástico / irónico</option>
+          <option value="dramatico">Dramático / épico</option>
+          <option value="didactico">Didáctico con humor</option>
+          <option value="mistico">Místico / esotérico</option>
+        </select>
+      </div>
     </div>
+    <button class="btn btn-primary" onclick="generateCopy()" id="btn-generate">GENERAR OPCIONES</button>
   </div>
-  <button class="btn btn-primary" onclick="generateCopy()" id="btn-generate">GENERAR OPCIONES</button>
+
+  <!-- VIDEO MODE -->
+  <div id="gen-video-mode" style="display:none;">
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">La IA ve el video que vas a publicar y genera copy específico basado en lo que realmente pasa en pantalla. Cruza con tus videos anteriores para replicar lo que ya funcionó.</div>
+    <div class="input-group">
+      <label class="input-label">Video a publicar</label>
+      <div class="drop-zone" id="gen-drop-zone">
+        <input type="file" id="gen-video-file" accept="video/*" onchange="handleGenFile(this)" />
+        <span class="drop-icon">🎬</span>
+        <div class="drop-text"><strong>Soltá el video acá</strong><br>o tocá para seleccionar</div>
+      </div>
+      <div class="file-ready" id="gen-file-ready"></div>
+    </div>
+    <button class="btn btn-primary" onclick="generateCopyWithVideo()" id="btn-generate-video" disabled>GENERAR COPY CON VIDEO</button>
+  </div>
+
   <div id="gen-results" style="margin-top:20px;"></div>
 </div>
 
@@ -475,7 +500,7 @@ async function startAnalysis(){
     const data=await resp.json();
     if(data.error){appendLog(`<span class="sys">Error: ${data.error}</span>\n`);resetBtn();return}
     setProgress(90,'Extrayendo insights');
-    currentAnalysisData={url,title,views:parseInt(views)||0,likes:parseInt(likes)||0,comment_count:parseInt(comment_count)||0,comments,copy_original,analysis:data.analysis};
+    currentAnalysisData={url,title,views:parseInt(views)||0,likes:parseInt(likes)||0,comment_count:parseInt(comment_count)||0,comments,copy_original,frames_data:data.frames_data||[],analysis:data.analysis};
     appendLog(fmtLog(data.analysis));
     pendingQuestions=extractQs(data.analysis);
     setProgress(100,'✓ Análisis completo');
@@ -512,7 +537,7 @@ async function finalizeAndSave(){
   }
   const ps=currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
   if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim());
-  await DB.saveVideo({url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,comments_raw:currentAnalysisData.comments,answers:currentAnalysisData.answers||[]});
+  await DB.saveVideo({url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,comments_raw:currentAnalysisData.comments,frames_data:currentAnalysisData.frames_data||[],answers:currentAnalysisData.answers||[]});
   await renderSidebar();
   const stats=await DB.getStats();
   updateStats(stats);
@@ -694,7 +719,51 @@ async function updateComments(){
 }
 
 // ---- GENERATE COPY ----
-async function generateCopy(){
+let currentGenFile = null;
+
+function setGenMode(mode, btn){
+  document.querySelectorAll('#screen-generator .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('gen-text-mode').style.display = mode==='text' ? 'block' : 'none';
+  document.getElementById('gen-video-mode').style.display = mode==='video' ? 'block' : 'none';
+}
+
+function handleGenFile(input){
+  if(input.files[0]){
+    currentGenFile = input.files[0];
+    const el = document.getElementById('gen-file-ready');
+    el.style.display = 'block';
+    el.innerHTML = `✓ ${currentGenFile.name} (${(currentGenFile.size/1024/1024).toFixed(1)} MB)`;
+    document.getElementById('btn-generate-video').disabled = false;
+  }
+}
+
+async function generateCopyWithVideo(){
+  if(!currentGenFile) return;
+  document.getElementById('btn-generate-video').disabled = true;
+  document.getElementById('gen-results').innerHTML = '<div style="font-size:12px;color:var(--text-dim);padding:20px 0;">Analizando video<span class="loading"></span></div>';
+
+  const videos = await DB.getVideos();
+  const [glosario, patrones] = await Promise.all([DB.getGlosario(), DB.getPatrones()]);
+
+  try{
+    const fd = new FormData();
+    fd.append('video', currentGenFile);
+    fd.append('glosario', JSON.stringify(glosario));
+    fd.append('patrones', JSON.stringify(patrones));
+    fd.append('contextVideos', JSON.stringify(videos.slice(0,4).map(v=>({views:v.views,likes:v.likes,analysis:(v.analysis||'').substring(0,500),frames_data:v.frames_data||[]}))));
+
+    const r = await fetch(`${API}/generate-with-video`, {method:'POST', headers:{'x-app-token':TOKEN}, body:fd});
+    const d = await r.json();
+    const opts = (d.copy||d.error||'').split(/OPCIÓN_\d+:/g).filter(s=>s.trim());
+    document.getElementById('gen-results').innerHTML = opts.length
+      ? opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('')
+      : `<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
+  }catch(err){
+    document.getElementById('gen-results').innerHTML = `<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
+  }
+  document.getElementById('btn-generate-video').disabled = false;
+}
   const desc=document.getElementById('gen-desc').value.trim();
   if(!desc){alert('Describí el video primero');return}
   document.getElementById('btn-generate').disabled=true;
