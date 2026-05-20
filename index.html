@@ -301,7 +301,21 @@ textarea.input-field{resize:vertical;min-height:80px}
       <button class="btn btn-danger" id="modal-delete-btn">ELIMINAR VIDEO</button>
       <a id="modal-yt-link" href="#" target="_blank" class="btn btn-ghost" style="font-size:10px;text-decoration:none;">VER EN YOUTUBE ↗</a>
       <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;" id="modal-update-comments-btn" onclick="updateComments()">↻ ACTUALIZAR COMENTARIOS</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);" id="modal-audio-btn" onclick="triggerAudioAnalysis()">🎵 AGREGAR AUDIO</button>
       <span id="comments-update-status" style="font-size:10px;color:var(--success);"></span>
+    </div>
+    <!-- Audio upload panel (hidden by default) -->
+    <div id="audio-upload-panel" style="display:none;margin-top:16px;border:1px solid var(--accent2);padding:16px;background:rgba(245,166,35,0.04);">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:12px;">🎵 ANÁLISIS DE AUDIO</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Subí el video para extraer y analizar el audio. Enriquece el análisis existente sin borrarlo.</div>
+      <div class="drop-zone" id="audio-drop-zone" style="padding:20px;">
+        <input type="file" id="audio-video-file" accept="video/*" onchange="handleAudioFile(this)" />
+        <span style="font-size:20px;display:block;margin-bottom:8px;">🎵</span>
+        <div class="drop-text"><strong>Soltá el video acá</strong><br><span style="font-size:10px;">Para extraer el audio</span></div>
+      </div>
+      <div id="audio-file-ready" style="display:none;font-size:11px;padding:8px;border:1px solid var(--success);color:var(--success);margin-top:8px;"></div>
+      <button class="btn btn-primary" style="background:var(--accent2);margin-top:8px;" id="btn-analyze-audio" onclick="analyzeAudio()" disabled>ANALIZAR AUDIO</button>
+      <div id="audio-status" style="font-size:11px;margin-top:8px;color:var(--text-dim);"></div>
     </div>
   </div>
 </div>
@@ -591,6 +605,66 @@ async function saveCopy(){
   document.getElementById('save-copy-btn').style.display='none';
   statusEl.textContent='✓ Copy guardado';setTimeout(()=>statusEl.textContent='',3000);
 }
+let currentAudioFile = null;
+let currentAudioVideoId = null;
+
+function triggerAudioAnalysis(){
+  const panel = document.getElementById('audio-upload-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  currentAudioVideoId = parseInt(document.getElementById('modal-update-comments-btn').getAttribute('data-video-id'));
+}
+
+function handleAudioFile(input){
+  if(input.files[0]){
+    currentAudioFile = input.files[0];
+    const el = document.getElementById('audio-file-ready');
+    el.style.display = 'block';
+    el.textContent = `✓ ${currentAudioFile.name} (${(currentAudioFile.size/1024/1024).toFixed(1)} MB)`;
+    document.getElementById('btn-analyze-audio').disabled = false;
+  }
+}
+
+async function analyzeAudio(){
+  if(!currentAudioFile || !currentAudioVideoId) return;
+  const btn = document.getElementById('btn-analyze-audio');
+  const statusEl = document.getElementById('audio-status');
+  btn.disabled = true;
+  statusEl.textContent = 'Extrayendo y transcribiendo audio...';
+  statusEl.style.color = 'var(--accent2)';
+
+  try{
+    const fd = new FormData();
+    fd.append('video', currentAudioFile);
+    fd.append('video_id', currentAudioVideoId);
+
+    const resp = await fetch(`${API}/analyze-audio`, {method:'POST', headers:{'x-app-token':TOKEN}, body:fd});
+    const data = await resp.json();
+
+    if(data.error){ statusEl.textContent = 'Error: ' + data.error; statusEl.style.color = 'var(--accent)'; btn.disabled = false; return; }
+
+    // Update the video analysis in DB with the transcription
+    const videos = await DB.getVideos();
+    const video = videos.find(v => v.id === currentAudioVideoId);
+    if(video){
+      video.analysis = (video.analysis || '') + '\n\n## TRANSCRIPCIÓN DE AUDIO\n' + data.transcription;
+      await DB.saveVideo(video);
+      cachedVideos = cachedVideos.map(v => v.id === currentAudioVideoId ? {...v, analysis: video.analysis} : v);
+      if(window._cv) window._cv = window._cv.map(v => v.id === currentAudioVideoId ? {...v, analysis: video.analysis} : v);
+      // Refresh analysis tab
+      document.getElementById('modal-analysis').textContent = video.analysis;
+    }
+
+    statusEl.textContent = '✓ Audio analizado y guardado';
+    statusEl.style.color = 'var(--success)';
+    document.getElementById('audio-upload-panel').style.display = 'none';
+    currentAudioFile = null;
+  }catch(err){
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.style.color = 'var(--accent)';
+    btn.disabled = false;
+  }
+}
+
 async function updateComments(){
   const btn=document.getElementById('modal-update-comments-btn');
   const statusEl=document.getElementById('comments-update-status');
