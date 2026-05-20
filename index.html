@@ -382,25 +382,7 @@ function logout(){
   document.getElementById('login-password').value='';
 }
 
-// Check saved session
-(async()=>{
-  const saved=sessionStorage.getItem('sb_token');
-  if(saved){
-    TOKEN=saved;
-    // Verify token
-    try{
-      const r=await authFetch(`${API}/stats`);
-      if(r.ok){
-        document.getElementById('login-screen').style.display='none';
-        document.getElementById('app').style.display='block';
-        await initApp();
-        return;
-      }
-    }catch(e){}
-    sessionStorage.removeItem('sb_token');
-    TOKEN='';
-  }
-})();
+// Check saved session - se ejecuta al final del script
 
 // ---- DB ----
 const DB={
@@ -827,6 +809,25 @@ async function initApp(){
   updateStats(stats);
   try{const r=await fetch(`${API}/`);const d=await r.json();document.getElementById('ver-badge').textContent=`backend v${d.version}`}catch(e){}
 }
+
+// Check saved session
+(async()=>{
+  const saved=sessionStorage.getItem('sb_token');
+  if(saved){
+    TOKEN=saved;
+    try{
+      const r=await authFetch(`${API}/stats`);
+      if(r.ok){
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app').style.display='block';
+        await initApp();
+        return;
+      }
+    }catch(e){}
+    sessionStorage.removeItem('sb_token');
+    TOKEN='';
+  }
+})();
 </script>
 </body>
 </html>
