@@ -147,6 +147,7 @@ textarea.input-field{resize:vertical;min-height:80px}
     <button class="nav-tab" onclick="showScreen('library',this)">Biblioteca</button>
     <button class="nav-tab" onclick="showScreen('generator',this)">Generar Copy</button>
     <button class="nav-tab" onclick="showScreen('ideas',this)">Ideas</button>
+    <button class="nav-tab" onclick="showScreen('glosario',this)">Glosario</button>
     <button class="nav-tab" onclick="logout()" style="margin-left:8px;border-color:#333;">Salir</button>
   </div>
 </header>
@@ -295,6 +296,16 @@ textarea.input-field{resize:vertical;min-height:80px}
   <div id="ideas-results"></div>
 </div>
 
+<div class="screen" id="screen-glosario">
+  <div class="section-title">GLOSARIO APRENDIDO</div>
+  <div class="section-sub">Términos que la IA aprendió de tus videos. Borrá los que no sirven.</div>
+  <div id="glosario-screen-list"></div>
+  <hr class="divider">
+  <div class="section-title" style="font-size:16px;margin-top:8px;">PATRONES</div>
+  <div class="section-sub">Recursos narrativos detectados en tus videos.</div>
+  <div id="patrones-screen-list"></div>
+</div>
+
 </div>
 <div class="sidebar">
   <div class="sidebar-title">Glosario Javier</div>
@@ -378,10 +389,14 @@ const DB={
   getVideos:async()=>{try{const r=await authFetch(`${API}/videos`);return r.ok?await r.json():[]}catch{return[]}},
   saveVideo:async(v)=>{try{const r=await authFetch(`${API}/videos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});return r.ok?await r.json():null}catch(e){console.error('saveVideo error:',e);return null}},
   deleteVideo:async(id)=>{await authFetch(`${API}/videos/${id}`,{method:'DELETE'})},
-  getGlosario:async()=>{try{const r=await authFetch(`${API}/glosario`);return r.ok?await r.json():{}}catch{return{}}},
-  addGlosario:async(k,v)=>{await authFetch(`${API}/glosario`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v})})},
-  getPatrones:async()=>{try{const r=await authFetch(`${API}/patrones`);return r.ok?await r.json():[]}catch{return[]}},
-  addPatron:async(p)=>{await authFetch(`${API}/patrones`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patron:p})})},
+  getGlosario:async()=>{try{const r=await authFetch(`${API}/glosario`);if(!r.ok)return{};const rows=await r.json();const obj={};rows.forEach(row=>obj[row.key]=row.value);return obj}catch{return{}}},
+  getGlosarioFull:async()=>{try{const r=await authFetch(`${API}/glosario`);return r.ok?await r.json():[]}catch{return[]}},
+  addGlosario:async(k,v,url)=>{await authFetch(`${API}/glosario`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v,video_url:url||null})})},
+  deleteGlosario:async(id)=>{await authFetch(`${API}/glosario/${id}`,{method:'DELETE'})},
+  getPatrones:async()=>{try{const r=await authFetch(`${API}/patrones`);if(!r.ok)return[];const rows=await r.json();return rows.map(r=>r.patron)}catch{return[]}},
+  getPatronesFull:async()=>{try{const r=await authFetch(`${API}/patrones`);return r.ok?await r.json():[]}catch{return[]}},
+  addPatron:async(p,url)=>{await authFetch(`${API}/patrones`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patron:p,video_url:url||null})})},
+  deletePatron:async(id)=>{await authFetch(`${API}/patrones/${id}`,{method:'DELETE'})},
   getStats:async()=>{try{const r=await authFetch(`${API}/stats`);return r.ok?await r.json():{videos:0,glosario:0,patrones:0}}catch{return{videos:0,glosario:0,patrones:0}}},
 };
 
@@ -516,10 +531,10 @@ async function finalizeAndSave(){
     for(const m of currentAnalysisData.analysis.matchAll(/([^→\n]{3,50})\s*→\s*([^\n]+)/g)){
       const k=m[1].trim().replace(/^["\*#\s]+|["\*#\s]+$/g,'');
       const v=m[2].trim();
-      if(k.length>2&&k.length<50)await DB.addGlosario(k,v);
+      if(k.length>2&&k.length<50)await DB.addGlosario(k,v,currentAnalysisData.url);
     }
     const ps=currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
-    if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim());
+    if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim(),currentAnalysisData.url);
   }
 
   const saveResult = await DB.saveVideo({url:currentAnalysisData.url,title:currentAnalysisData.title||document.getElementById('yt-title').value.trim(),views:currentAnalysisData.views,likes:currentAnalysisData.likes,comment_count:currentAnalysisData.comment_count,analysis:currentAnalysisData.analysis,copy_original:currentAnalysisData.copy_original,comments_raw:currentAnalysisData.comments,frames_data:currentAnalysisData.frames_data||[],answers:currentAnalysisData.answers||[]});
@@ -752,6 +767,59 @@ async function renderSidebar(){
 }
 function updateStats(s){document.getElementById('stat-videos').textContent=s?.videos||0;document.getElementById('stat-glosario').textContent=s?.glosario||0;document.getElementById('stat-patrones').textContent=s?.patrones||0}
 
+// ---- GLOSARIO SCREEN ----
+async function renderGlosarioScreen(){
+  const [glosario, patrones] = await Promise.all([DB.getGlosarioFull(), DB.getPatronesFull()]);
+
+  const gl = document.getElementById('glosario-screen-list');
+  if(!glosario.length){
+    gl.innerHTML='<div class="empty-state"><span class="empty-icon">📖</span>El glosario está vacío.</div>';
+  } else {
+    gl.innerHTML = glosario.map(row => {
+      const videoId = row.video_url ? extractId(row.video_url) : null;
+      const thumb = videoId ? `<img src="https://img.youtube.com/vi/${videoId}/default.jpg" style="width:40px;height:30px;object-fit:cover;border:1px solid #333;flex-shrink:0;">` : '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #333;" id="g-${row.id}">
+        ${thumb}
+        <span style="color:var(--accent);font-style:italic;min-width:160px;font-size:11px;">${row.key}</span>
+        <span style="color:var(--text-dim);">→</span>
+        <span style="color:var(--text-mid);flex:1;font-size:11px;">${row.value}</span>
+        <button class="btn-danger" style="padding:2px 8px;" onclick="deleteGlosarioEntry(${row.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  const pl = document.getElementById('patrones-screen-list');
+  if(!patrones.length){
+    pl.innerHTML='<div style="font-size:11px;color:var(--text-dim);font-style:italic;padding:12px 0;">No hay patrones todavía.</div>';
+  } else {
+    pl.innerHTML = patrones.map(row => {
+      const videoId = row.video_url ? extractId(row.video_url) : null;
+      const thumb = videoId ? `<img src="https://img.youtube.com/vi/${videoId}/default.jpg" style="width:40px;height:30px;object-fit:cover;border:1px solid #333;flex-shrink:0;">` : '';
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid #333;" id="p-${row.id}">
+        ${thumb}
+        <span style="color:var(--text-mid);font-size:11px;flex:1;line-height:1.5;">${row.patron}</span>
+        <button class="btn-danger" style="padding:2px 8px;" onclick="deletePatronEntry(${row.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+}
+
+async function deleteGlosarioEntry(id){
+  await DB.deleteGlosario(id);
+  document.getElementById(`g-${id}`)?.remove();
+  const stats = await DB.getStats();
+  updateStats(stats);
+  await renderSidebar();
+}
+
+async function deletePatronEntry(id){
+  await DB.deletePatron(id);
+  document.getElementById(`p-${id}`)?.remove();
+  const stats = await DB.getStats();
+  updateStats(stats);
+  await renderSidebar();
+}
+
 // ---- NAV ----
 function showScreen(name,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -760,6 +828,7 @@ function showScreen(name,btn){
   if(btn)btn.classList.add('active');
   if(name==='library')renderLibrary();
   if(name==='generator'||name==='ideas')renderSidebar();
+  if(name==='glosario')renderGlosarioScreen();
 }
 
 // ---- UTILS ----
