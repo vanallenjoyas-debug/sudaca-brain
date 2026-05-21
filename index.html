@@ -837,7 +837,7 @@ async function generateCopy(){
   const videos=await DB.getVideos();
   if(!videos.length){document.getElementById('gen-results').innerHTML='<div class="empty-state">Necesitás al menos un video analizado.</div>';document.getElementById('btn-generate').disabled=false;return}
   const[glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
-  const ctx=videos.slice(0,5).map(v=>({views:v.views,likes:v.likes,analysis:(v.analysis||'').substring(0,600)}));
+  const ctx=videos.slice(0,6).map(v=>({views:v.views,likes:v.likes,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,300)}));
   try{
     const r=await authFetch(`${API}/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,momento:document.getElementById('gen-momento').value,tono:document.getElementById('gen-tono').value,glosario,patrones,contextVideos:ctx})});
     const d=await r.json();
