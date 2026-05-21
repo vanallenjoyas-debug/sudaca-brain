@@ -151,6 +151,7 @@ textarea.input-field{resize:vertical;min-height:80px}
     <button class="nav-tab" onclick="showScreen('generator',this)">Generar Copy</button>
     <button class="nav-tab" onclick="showScreen('ideas',this)">Ideas</button>
     <button class="nav-tab" onclick="showScreen('glosario',this)">Glosario</button>
+    <button class="nav-tab" onclick="showScreen('frases-db',this)">Frases</button>
     <button class="nav-tab" onclick="logout()" style="margin-left:8px;border-color:#333;">Salir</button>
   </div>
 </header>
@@ -318,7 +319,18 @@ textarea.input-field{resize:vertical;min-height:80px}
   <div id="ideas-results"></div>
 </div>
 
-<div class="screen" id="screen-glosario">
+<div class="screen" id="screen-frases-db">
+  <div class="section-title">FRASES APROBADAS</div>
+  <div class="section-sub">Tus frases guardadas por proceso. Tocá un proceso para ver las frases.</div>
+  <div id="frases-procesos" style="display:flex;flex-wrap:wrap;gap:10px;margin:20px 0;"></div>
+  <div id="frases-detalle" style="display:none;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div id="frases-detalle-titulo" style="font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);"></div>
+      <button onclick="cerrarDetalle()" class="btn btn-ghost" style="font-size:10px;padding:4px 10px;">✕ CERRAR</button>
+    </div>
+    <div id="frases-detalle-lista"></div>
+  </div>
+</div>
   <div class="section-title">GLOSARIO APRENDIDO</div>
   <div class="section-sub">Términos que la IA aprendió de tus videos. Borrá los que no sirven.</div>
   <div id="glosario-screen-list"></div>
@@ -427,7 +439,9 @@ const DB={
   getVideos:async()=>{try{const r=await authFetch(`${API}/videos`);return r.ok?await r.json():[]}catch{return[]}},
   saveVideo:async(v)=>{try{const r=await authFetch(`${API}/videos`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});return r.ok?await r.json():null}catch(e){console.error('saveVideo error:',e);return null}},
   deleteVideo:async(id)=>{await authFetch(`${API}/videos/${id}`,{method:'DELETE'})},
-  getGlosario:async()=>{try{const r=await authFetch(`${API}/glosario`);if(!r.ok)return{};const rows=await r.json();const obj={};rows.forEach(row=>obj[row.key]=row.value);return obj}catch{return{}}},
+  getFrasesAprobadas:async()=>{try{const r=await authFetch(`${API}/frases-aprobadas`);return r.ok?await r.json():[]}catch{return[]}},
+  aprobarFrase:async(proceso,frase)=>{try{const r=await authFetch(`${API}/frases-aprobadas`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({proceso,frase})});return r.ok?await r.json():null}catch{return null}},
+  deleteFrase:async(id)=>{await authFetch(`${API}/frases-aprobadas/${id}`,{method:'DELETE'})},try{const r=await authFetch(`${API}/glosario`);if(!r.ok)return{};const rows=await r.json();const obj={};rows.forEach(row=>obj[row.key]=row.value);return obj}catch{return{}}},
   getGlosarioFull:async()=>{try{const r=await authFetch(`${API}/glosario`);return r.ok?await r.json():[]}catch{return[]}},
   addGlosario:async(k,v,url)=>{await authFetch(`${API}/glosario`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k,value:v,video_url:url||null})})},
   deleteGlosario:async(id)=>{await authFetch(`${API}/glosario/${id}`,{method:'DELETE'})},
@@ -835,7 +849,21 @@ async function generateFrasesNew(){
   try{
     const r = await authFetch(`${API}/generate-frases-new`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,contextVideos:ctx})});
     const d = await r.json();
-    document.getElementById('gen-results').innerHTML = `<div class="copy-result flash"><div class="copy-score" style="color:#10b981;">✨</div><div class="copy-label">FRASES NUEVAS PARA: ${desc}</div><div class="copy-text" style="white-space:pre-wrap;">${(d.copy||d.error||'').replace(/\n/g,'<br>')}</div></div>`;
+    const raw = d.copy || d.error || '';
+    const lineas = raw.split('\n').filter(l=>l.trim().match(/^\d+\./));
+    const proceso = desc;
+    document.getElementById('gen-results').innerHTML = `
+      <div class="copy-result flash">
+        <div class="copy-score" style="color:#10b981;">✨</div>
+        <div class="copy-label">FRASES NUEVAS PARA: ${desc}</div>
+        ${lineas.length > 0
+          ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
+              <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
+              <button onclick="aprobarFrase(${JSON.stringify(l.replace(/^\d+\.\s*/,'').trim())}, ${JSON.stringify(proceso)}, this)" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
+            </div>`).join('')
+          : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
+        }
+      </div>`;
     document.getElementById('gen-clear-bar').style.display='block';
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
@@ -854,7 +882,21 @@ async function generateFrases(){
   try{
     const r = await authFetch(`${API}/generate-frases`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,contextVideos:ctx})});
     const d = await r.json();
-    document.getElementById('gen-results').innerHTML = `<div class="copy-result flash"><div class="copy-score" style="color:#a855f7;">💬</div><div class="copy-label">FRASES PARA: ${desc}</div><div class="copy-text" style="white-space:pre-wrap;">${(d.copy||d.error||'').replace(/\n/g,'<br>')}</div></div>`;
+    const raw = d.copy || d.error || '';
+    const lineas = raw.split('\n').filter(l=>l.trim().match(/^\d+\./));
+    const proceso = desc;
+    document.getElementById('gen-results').innerHTML = `
+      <div class="copy-result flash">
+        <div class="copy-score" style="color:#a855f7;">💬</div>
+        <div class="copy-label">FRASES PARA: ${desc}</div>
+        ${lineas.length > 0 
+          ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
+              <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
+              <button onclick="aprobarFrase(${JSON.stringify(l.replace(/^\d+\.\s*/,'').trim())}, ${JSON.stringify(proceso)}, this)" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
+            </div>`).join('')
+          : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
+        }
+      </div>`;
     document.getElementById('gen-clear-bar').style.display='block';
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
@@ -978,6 +1020,58 @@ async function renderSidebar(){
 }
 function updateStats(s){document.getElementById('stat-videos').textContent=s?.videos||0;document.getElementById('stat-glosario').textContent=s?.glosario||0;document.getElementById('stat-patrones').textContent=s?.patrones||0}
 
+// ---- FRASES DB ----
+let currentFraseProceso = null;
+
+async function renderFrasesDB(){
+  const frases = await DB.getFrasesAprobadas();
+  const procesos = [...new Set(frases.map(f=>f.proceso))];
+  const container = document.getElementById('frases-procesos');
+  
+  if(!procesos.length){
+    container.innerHTML='<div class="empty-state"><span class="empty-icon">💬</span>No hay frases guardadas todavía.<br>Generá frases y aprobá las que te gusten.</div>';
+    return;
+  }
+  
+  container.innerHTML = procesos.map(p=>`
+    <div onclick="verProcesoFrases('${p.replace(/'/g,"\\'")}', this)" style="cursor:pointer;padding:14px 20px;border:1px solid var(--border);background:var(--card);text-transform:uppercase;letter-spacing:2px;font-size:11px;transition:all 0.2s;" 
+    onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      ${p}<br><span style="font-size:9px;color:var(--text-dim);letter-spacing:1px;">${frases.filter(f=>f.proceso===p).length} frases</span>
+    </div>`).join('');
+}
+
+async function verProcesoFrases(proceso){
+  currentFraseProceso = proceso;
+  const frases = await DB.getFrasesAprobadas();
+  const mine = frases.filter(f=>f.proceso===proceso);
+  document.getElementById('frases-detalle-titulo').textContent = proceso;
+  document.getElementById('frases-detalle-lista').innerHTML = mine.map(f=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid #333;" id="frase-${f.id}">
+      <span style="color:var(--text-mid);font-size:12px;flex:1;line-height:1.6;">${f.frase}</span>
+      <button onclick="deleteFrase(${f.id})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;flex-shrink:0;">✕</button>
+    </div>`).join('');
+  document.getElementById('frases-detalle').style.display='block';
+  document.getElementById('frases-detalle').scrollIntoView({behavior:'smooth'});
+}
+
+function cerrarDetalle(){
+  document.getElementById('frases-detalle').style.display='none';
+  currentFraseProceso=null;
+}
+
+async function deleteFrase(id){
+  await DB.deleteFrase(id);
+  document.getElementById(`frase-${id}`)?.remove();
+  await renderFrasesDB();
+}
+
+async function aprobarFrase(frase, proceso, btn){
+  btn.disabled=true;
+  btn.textContent='✓';
+  btn.style.color='var(--success)';
+  await DB.aprobarFrase(proceso, frase);
+}
+
 // ---- GLOSARIO SCREEN ----
 async function renderGlosarioScreen(){
   const [glosario, patrones] = await Promise.all([DB.getGlosarioFull(), DB.getPatronesFull()]);
@@ -1040,6 +1134,7 @@ function showScreen(name,btn){
   if(name==='library')renderLibrary();
   if(name==='generator'||name==='ideas')renderSidebar();
   if(name==='glosario')renderGlosarioScreen();
+  if(name==='frases-db')renderFrasesDB();
 }
 
 // ---- UTILS ----
