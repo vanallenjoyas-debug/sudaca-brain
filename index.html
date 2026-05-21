@@ -498,7 +498,7 @@ async function startAnalysis(){
 }
 
 function resetBtn(){const b=document.getElementById('btn-analyze');b.disabled=false;b.textContent='▶ ANALIZAR VIDEO';b.style.background='var(--accent)'}
-function extractQs(t){return[...t.matchAll(/PREGUNTA_\d+:\s*(.+)/g)].map(m=>m[1].trim())}
+function extractQs(t){return[...t.matchAll(/\*{0,2}PREGUNTA_\d+\*{0,2}:\s*(.+)/g)].map(m=>m[1].trim())}
 function showQs(qs){
   document.getElementById('questions-list').innerHTML=qs.map((q,i)=>`<div class="question-item" id="qitem-${i}"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="question-text">⚡ ${q}</div><button onclick="dismissQuestion(${i})" style="background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;flex-shrink:0;padding:0 4px;" title="Descartar pregunta">✕</button></div><textarea class="question-input" id="ans-${i}" placeholder="Tu respuesta..."></textarea></div>`).join('');
   const p=document.getElementById('questions-panel');p.style.display='block';p.scrollIntoView({behavior:'smooth'});
