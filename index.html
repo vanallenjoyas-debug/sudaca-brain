@@ -581,10 +581,14 @@ async function finalizeAndSave(){
   const alreadyExists = existingVideos.some(v => v.url === currentAnalysisData.url);
 
   if(!alreadyExists){
-    for(const m of currentAnalysisData.analysis.matchAll(/([^→\n]{3,50})\s*→\s*([^\n]+)/g)){
-      const k=m[1].trim().replace(/^["\*#\s]+|["\*#\s]+$/g,'');
-      const v=m[2].trim();
-      if(k.length>2&&k.length<50)await DB.addGlosario(k,v,currentAnalysisData.url);
+    // Solo captura términos del formato exacto del glosario: palabra_con_guiones → definición
+    // Excluye líneas de análisis, frames, timestamps, etc.
+    for(const m of currentAnalysisData.analysis.matchAll(/^([a-záéíóúñA-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ_\s]{2,40})\s*→\s*([^\n]{5,100})$/gm)){
+      const k=m[1].trim().replace(/^["\*#\s]+|["\*#\s]+$/g,'').replace(/\*+/g,'');
+      const v=m[2].trim().replace(/\*+/g,'');
+      // Excluir si contiene caracteres de análisis markdown
+      if(k.length>2&&k.length<50&&!k.includes('**')&&!k.includes('#')&&!k.match(/^\d/)&&!k.includes(':'))
+        await DB.addGlosario(k,v,currentAnalysisData.url);
     }
     const ps=currentAnalysisData.analysis.match(/## PATRONES REPLICABLES\n([\s\S]+?)(?=##|$)/);
     if(ps)for(const l of ps[1].split('\n').filter(l=>l.trim().startsWith('-')))await DB.addPatron(l.replace(/^-\s*/,'').trim(),currentAnalysisData.url);
