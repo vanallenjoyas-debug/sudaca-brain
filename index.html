@@ -340,7 +340,16 @@ textarea.input-field{resize:vertical;min-height:80px}
       <button class="btn btn-danger" id="modal-delete-btn">ELIMINAR VIDEO</button>
       <a id="modal-yt-link" href="#" target="_blank" class="btn btn-ghost" style="font-size:10px;text-decoration:none;">VER EN YOUTUBE ↗</a>
       <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;" id="modal-update-comments-btn" onclick="updateComments()">↻ ACTUALIZAR COMENTARIOS</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);" onclick="openModalQuestions()">⚡ RESPONDER PREGUNTAS</button>
       <span id="comments-update-status" style="font-size:10px;color:var(--success);"></span>
+    </div>
+
+    <!-- Questions panel inside modal -->
+    <div id="modal-questions-panel" style="display:none;margin-top:16px;border:1px solid var(--accent2);background:rgba(245,166,35,0.04);padding:16px;">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:14px;">⚡ PREGUNTAS DEL ANÁLISIS</div>
+      <div id="modal-questions-list"></div>
+      <button class="btn btn-primary" style="margin-top:14px;background:var(--accent2);" onclick="submitModalAnswers()">GUARDAR RESPUESTAS</button>
+      <span id="modal-questions-status" style="font-size:10px;color:var(--success);margin-left:10px;"></span>
     </div>
   </div>
 </div>
@@ -637,6 +646,69 @@ async function saveCopy(){
   document.getElementById('save-copy-btn').style.display='none';
   statusEl.textContent='✓ Copy guardado';setTimeout(()=>statusEl.textContent='',3000);
 }
+function openModalQuestions(){
+  const panel = document.getElementById('modal-questions-panel');
+  const list = document.getElementById('modal-questions-list');
+  
+  // Get current video analysis
+  const id = parseInt(document.getElementById('modal-update-comments-btn').getAttribute('data-video-id'));
+  const video = (window._cv||cachedVideos).find(v=>v.id===id);
+  if(!video?.analysis){ alert('No hay análisis para este video'); return; }
+
+  // Extract questions from analysis
+  const qs = [...video.analysis.matchAll(/\*{0,2}PREGUNTA_\d+\*{0,2}:\s*(.+)/g)].map(m=>m[1].trim());
+  
+  if(!qs.length){ 
+    list.innerHTML='<div style="font-size:11px;color:var(--text-dim);">No hay preguntas en este análisis.</div>';
+  } else {
+    list.innerHTML = qs.map((q,i)=>`
+      <div class="question-item">
+        <div class="question-text">⚡ ${q}</div>
+        <textarea class="question-input" id="modal-ans-${i}" placeholder="Tu respuesta..."></textarea>
+      </div>`).join('');
+  }
+  
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+async function submitModalAnswers(){
+  const id = parseInt(document.getElementById('modal-update-comments-btn').getAttribute('data-video-id'));
+  const video = (window._cv||cachedVideos).find(v=>v.id===id);
+  if(!video) return;
+
+  const qs = [...video.analysis.matchAll(/\*{0,2}PREGUNTA_\d+\*{0,2}:\s*(.+)/g)].map(m=>m[1].trim());
+  const answers = qs.map((q,i)=>({question:q, answer:document.getElementById(`modal-ans-${i}`)?.value.trim()})).filter(a=>a.answer);
+  
+  if(!answers.length){ 
+    document.getElementById('modal-questions-status').textContent='Respondé al menos una pregunta';
+    return; 
+  }
+
+  const statusEl = document.getElementById('modal-questions-status');
+  statusEl.textContent = 'Guardando...'; statusEl.style.color='var(--accent2)';
+
+  try {
+    const r = await authFetch(`${API}/refine`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analysis:video.analysis, answers})});
+    const d = await r.json();
+    
+    const newAnalysis = video.analysis + '\n\n## RESPUESTAS AGREGADAS\n' + (d.refined||'');
+    video.analysis = newAnalysis;
+    await DB.saveVideo(video);
+    
+    // Update cache and modal
+    cachedVideos = cachedVideos.map(v=>v.id===id?{...v,analysis:newAnalysis}:v);
+    if(window._cv) window._cv = window._cv.map(v=>v.id===id?{...v,analysis:newAnalysis}:v);
+    document.getElementById('modal-analysis').textContent = newAnalysis;
+    
+    statusEl.textContent = '✓ Respuestas guardadas';
+    statusEl.style.color = 'var(--success)';
+    document.getElementById('modal-questions-panel').style.display = 'none';
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    statusEl.style.color = 'var(--accent)';
+  }
+}
+
 async function updateComments(){
   const btn=document.getElementById('modal-update-comments-btn');
   const statusEl=document.getElementById('comments-update-status');
