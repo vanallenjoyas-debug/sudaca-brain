@@ -239,6 +239,7 @@ textarea.input-field{resize:vertical;min-height:80px}
     <button class="filter-btn" id="gen-mode-simple" onclick="setGenMode('simple',this)">⚡ MODO SIMPLE</button>
     <button class="filter-btn" id="gen-mode-gemini" onclick="setGenMode('gemini',this)" style="border-color:#4285f4;color:#4285f4;">✦ GEMINI</button>
     <button class="filter-btn" id="gen-mode-frases" onclick="setGenMode('frases',this)" style="border-color:#a855f7;color:#a855f7;">💬 FRASES</button>
+    <button class="filter-btn" id="gen-mode-frases-new" onclick="setGenMode('frases-new',this)" style="border-color:#10b981;color:#10b981;">✨ FRASES NUEVAS</button>
   </div>
 
   <!-- TEXT MODE -->
@@ -268,6 +269,16 @@ textarea.input-field{resize:vertical;min-height:80px}
       <textarea class="input-field" id="gen-desc-frases" placeholder="Ej: fundir un anillo en el crisol, laminar en la laminadora, hacer una chapa..." style="min-height:70px;"></textarea>
     </div>
     <button class="btn btn-primary" onclick="generateFrases()" id="btn-generate-frases" style="background:#a855f7;">💬 GENERAR FRASES</button>
+  </div>
+
+  <!-- FRASES NUEVAS MODE -->
+  <div id="gen-frases-new-mode" style="display:none;">
+    <div style="font-size:11px;color:#10b981;margin-bottom:12px;">Genera frases 100% nuevas con tu lógica. No usa ninguna frase tuya existente.</div>
+    <div class="input-group">
+      <label class="input-label">¿Qué proceso vas a mostrar?</label>
+      <textarea class="input-field" id="gen-desc-frases-new" placeholder="Ej: fundir un anillo en el crisol..." style="min-height:70px;"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="generateFrasesNew()" id="btn-generate-frases-new" style="background:#10b981;">✨ GENERAR FRASES NUEVAS</button>
   </div>
 
   <!-- GEMINI MODE -->
@@ -788,6 +799,7 @@ function setGenMode(mode, btn){
   document.getElementById('gen-simple-mode').style.display = mode==='simple' ? 'block' : 'none';
   document.getElementById('gen-gemini-mode').style.display = mode==='gemini' ? 'block' : 'none';
   document.getElementById('gen-frases-mode').style.display = mode==='frases' ? 'block' : 'none';
+  document.getElementById('gen-frases-new-mode').style.display = mode==='frases-new' ? 'block' : 'none';
 }
 
 function handleGenFile(input){
@@ -810,6 +822,25 @@ function clearGenerator(){
   document.getElementById('gen-drop-zone').style.borderColor='';
   document.getElementById('gen-video-file').value='';
   document.getElementById('gen-desc').value='';
+}
+
+async function generateFrasesNew(){
+  const desc = document.getElementById('gen-desc-frases-new').value.trim();
+  if(!desc){alert('Describí el proceso primero');return}
+  document.getElementById('btn-generate-frases-new').disabled=true;
+  document.getElementById('gen-results').innerHTML='<div style="font-size:12px;color:#10b981;padding:20px 0;">Generando frases nuevas<span class="loading"></span></div>';
+  const videos = await DB.getVideos();
+  const [glosario] = await Promise.all([DB.getGlosario()]);
+  const ctx = videos.map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,300)}));
+  try{
+    const r = await authFetch(`${API}/generate-frases-new`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,contextVideos:ctx})});
+    const d = await r.json();
+    document.getElementById('gen-results').innerHTML = `<div class="copy-result flash"><div class="copy-score" style="color:#10b981;">✨</div><div class="copy-label">FRASES NUEVAS PARA: ${desc}</div><div class="copy-text" style="white-space:pre-wrap;">${(d.copy||d.error||'').replace(/\n/g,'<br>')}</div></div>`;
+    document.getElementById('gen-clear-bar').style.display='block';
+  }catch(err){
+    document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
+  }
+  document.getElementById('btn-generate-frases-new').disabled=false;
 }
 
 async function generateFrases(){
