@@ -811,10 +811,12 @@ async function generateGeminiMode(){
   try{
     const r = await authFetch(`${API}/generate-gemini`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,patrones,contextVideos:ctx})});
     const d = await r.json();
-    const opts = (d.copy||d.error||'').split(/---+/).filter(s=>s.trim().length>20);
-    document.getElementById('gen-results').innerHTML = opts.length > 1
-      ? opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('')
-      : `<div class="copy-result flash"><div class="copy-text">${(d.copy||d.error||'').replace(/\n/g,'<br>')}</div></div>`;
+    const raw = d.copy || d.error || '';
+    // Try multiple separators Gemini might use
+    let opts = raw.split(/\n---+\n|---+/).filter(s=>s.trim().length>20);
+    if(opts.length < 2) opts = raw.split(/\n\n(?=Opción|\*\*Opción|Opcion|[1-3]\.|[1-3]\))/i).filter(s=>s.trim().length>20);
+    if(opts.length < 2) opts = [raw]; // fallback: show as one
+    document.getElementById('gen-results').innerHTML = opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('');
     document.getElementById('gen-clear-bar').style.display='block';
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
