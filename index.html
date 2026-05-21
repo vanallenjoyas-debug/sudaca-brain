@@ -233,10 +233,11 @@ textarea.input-field{resize:vertical;min-height:80px}
   <div class="section-title">GENERAR COPY</div>
   <div class="section-sub">Describí el video o subilo directamente para copy específico</div>
 
-  <div style="display:flex;gap:8px;margin-bottom:20px;">
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
     <button class="filter-btn active" id="gen-mode-text" onclick="setGenMode('text',this)">📝 CON DESCRIPCIÓN</button>
     <button class="filter-btn" id="gen-mode-video" onclick="setGenMode('video',this)">🎬 CON VIDEO</button>
     <button class="filter-btn" id="gen-mode-simple" onclick="setGenMode('simple',this)">⚡ MODO SIMPLE</button>
+    <button class="filter-btn" id="gen-mode-gemini" onclick="setGenMode('gemini',this)" style="border-color:#4285f4;color:#4285f4;">✦ GEMINI</button>
   </div>
 
   <!-- TEXT MODE -->
@@ -257,6 +258,17 @@ textarea.input-field{resize:vertical;min-height:80px}
     </div>
     <button class="btn btn-primary" onclick="generateSimple()" id="btn-generate-simple">⚡ GENERAR SIMPLE</button>
   </div>
+
+  <!-- GEMINI MODE -->
+  <div id="gen-gemini-mode" style="display:none;">
+    <div style="font-size:11px;color:#4285f4;margin-bottom:12px;">Prompt sugerido por Gemini. Máximo 90 palabras, lógica de contraste absurdo.</div>
+    <div class="input-group">
+      <label class="input-label">¿De qué trata el video?</label>
+      <textarea class="input-field" id="gen-desc-gemini" placeholder="Describí el video..." style="min-height:90px;"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="generateGeminiMode()" id="btn-generate-gemini" style="background:#4285f4;">✦ GENERAR</button>
+  </div>
+
   <div id="gen-video-mode" style="display:none;">
     <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">La IA ve el video que vas a publicar y genera copy específico basado en lo que realmente pasa en pantalla. Cruza con tus videos anteriores para replicar lo que ya funcionó.</div>
     <div class="input-group">
@@ -763,6 +775,7 @@ function setGenMode(mode, btn){
   document.getElementById('gen-text-mode').style.display = mode==='text' ? 'block' : 'none';
   document.getElementById('gen-video-mode').style.display = mode==='video' ? 'block' : 'none';
   document.getElementById('gen-simple-mode').style.display = mode==='simple' ? 'block' : 'none';
+  document.getElementById('gen-gemini-mode').style.display = mode==='gemini' ? 'block' : 'none';
 }
 
 function handleGenFile(input){
@@ -785,6 +798,28 @@ function clearGenerator(){
   document.getElementById('gen-drop-zone').style.borderColor='';
   document.getElementById('gen-video-file').value='';
   document.getElementById('gen-desc').value='';
+}
+
+async function generateGeminiMode(){
+  const desc = document.getElementById('gen-desc-gemini').value.trim();
+  if(!desc){alert('Describí el video primero');return}
+  document.getElementById('btn-generate-gemini').disabled=true;
+  document.getElementById('gen-results').innerHTML='<div style="font-size:12px;color:#4285f4;padding:20px 0;">Generando con prompt Gemini<span class="loading"></span></div>';
+  const videos = await DB.getVideos();
+  const [glosario, patrones] = await Promise.all([DB.getGlosario(), DB.getPatrones()]);
+  const ctx = videos.slice(0,8).map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||''}));
+  try{
+    const r = await authFetch(`${API}/generate-gemini`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,patrones,contextVideos:ctx})});
+    const d = await r.json();
+    const opts = (d.copy||d.error||'').split(/---+/).filter(s=>s.trim().length>20);
+    document.getElementById('gen-results').innerHTML = opts.length > 1
+      ? opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('')
+      : `<div class="copy-result flash"><div class="copy-text">${(d.copy||d.error||'').replace(/\n/g,'<br>')}</div></div>`;
+    document.getElementById('gen-clear-bar').style.display='block';
+  }catch(err){
+    document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
+  }
+  document.getElementById('btn-generate-gemini').disabled=false;
 }
 
 async function generateSimple(){
