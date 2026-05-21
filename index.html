@@ -132,7 +132,10 @@ textarea.input-field{resize:vertical;min-height:80px}
   <div class="login-box">
     <div class="login-logo">SUDACA<span style="color:var(--text-dim)">_</span>BRAIN</div>
     <div class="login-sub">Ingresá tu contraseña para continuar</div>
-    <input type="password" class="login-input" id="login-password" placeholder="••••••••" autofocus />
+    <div style="position:relative;">
+      <input type="password" class="login-input" id="login-password" placeholder="••••••••" autofocus style="padding-right:44px;" />
+      <button onclick="togglePwd()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;" id="pwd-toggle">👁</button>
+    </div>
     <button class="login-btn" id="login-btn">ENTRAR</button>
     <div class="login-error" id="login-error"></div>
   </div>
@@ -364,6 +367,13 @@ function authFetch(url,opts={}){
   return fetch(url,{...opts,headers:{...opts.headers,'x-app-token':TOKEN}});
 }
 
+function togglePwd(){
+  const input = document.getElementById('login-password');
+  const btn = document.getElementById('pwd-toggle');
+  if(input.type === 'password'){ input.type='text'; btn.textContent='🙈'; }
+  else { input.type='password'; btn.textContent='👁'; }
+}
+
 async function doLogin(){
   const pw=document.getElementById('login-password').value.trim();
   const errEl=document.getElementById('login-error');
@@ -373,7 +383,7 @@ async function doLogin(){
     const d=await r.json();
     if(d.ok){
       TOKEN=d.token;
-      sessionStorage.setItem('sb_token',TOKEN);
+      localStorage.setItem('sb_token',TOKEN);
       document.getElementById('login-screen').style.display='none';
       document.getElementById('app').style.display='block';
       await initApp();
@@ -384,7 +394,7 @@ async function doLogin(){
 }
 
 function logout(){
-  sessionStorage.removeItem('sb_token');
+  localStorage.removeItem('sb_token');
   TOKEN='';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -560,6 +570,28 @@ async function finalizeAndSave(){
   document.getElementById('final-result').innerHTML=`<div class="final-box flash"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--success);margin-bottom:10px;">✓ GUARDADO EN LA NUBE</div><div style="font-size:12px;color:var(--success);">Análisis guardado. Accesible desde cualquier dispositivo.</div><div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Videos: ${stats.videos} | Glosario: ${stats.glosario} | Patrones: ${stats.patrones}</div></div>`;
   const btn=document.getElementById('btn-analyze');
   btn.textContent='✓ ANÁLISIS COMPLETADO';btn.style.background='var(--success)';btn.style.color='#000';btn.disabled=false;
+  
+  // Reset form after 3 seconds
+  setTimeout(()=>{
+    currentFile=null;
+    document.getElementById('yt-url').value='';
+    document.getElementById('yt-title').value='';
+    document.getElementById('yt-views').value='';
+    document.getElementById('yt-likes').value='';
+    document.getElementById('yt-comment-count').value='';
+    document.getElementById('yt-comments').value='';
+    document.getElementById('copy-original').value='';
+    document.getElementById('yt-status').textContent='';
+    document.getElementById('file-ready').style.display='none';
+    document.getElementById('drop-zone').style.borderColor='';
+    document.getElementById('video-file').value='';
+    document.getElementById('analysis-divider').style.display='none';
+    document.getElementById('analysis-section').style.display='none';
+    document.getElementById('analysis-log').innerHTML='';
+    document.getElementById('final-result').innerHTML='';
+    document.getElementById('progress-fill').style.width='0%';
+    btn.textContent='ANALIZAR VIDEO';btn.style.background='var(--accent)';btn.style.color='#fff';btn.disabled=true;
+  }, 3000);
 }
 
 // ---- LIBRARY ----
@@ -917,7 +949,7 @@ async function initApp(){
 
 // Check saved session
 (async()=>{
-  const saved=sessionStorage.getItem('sb_token');
+  const saved=localStorage.getItem('sb_token');
   if(saved){
     TOKEN=saved;
     try{
@@ -929,7 +961,7 @@ async function initApp(){
         return;
       }
     }catch(e){}
-    sessionStorage.removeItem('sb_token');
+    localStorage.removeItem('sb_token');
     TOKEN='';
   }
 })();
