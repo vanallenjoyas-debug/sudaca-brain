@@ -807,7 +807,7 @@ async function generateGeminiMode(){
   document.getElementById('gen-results').innerHTML='<div style="font-size:12px;color:#4285f4;padding:20px 0;">Generando con prompt Gemini<span class="loading"></span></div>';
   const videos = await DB.getVideos();
   const [glosario, patrones] = await Promise.all([DB.getGlosario(), DB.getPatrones()]);
-  const ctx = videos.slice(0,8).map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||''}));
+  const ctx = videos.map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,500)}));
   try{
     const r = await authFetch(`${API}/generate-gemini`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,patrones,contextVideos:ctx})});
     const d = await r.json();
@@ -829,7 +829,7 @@ async function generateSimple(){
   document.getElementById('gen-results').innerHTML='<div style="font-size:12px;color:var(--text-dim);padding:20px 0;">Generando modo simple<span class="loading"></span></div>';
   const videos = await DB.getVideos();
   const [glosario, patrones] = await Promise.all([DB.getGlosario(), DB.getPatrones()]);
-  const ctx = videos.slice(0,8).map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||''}));
+  const ctx = videos.map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,500)}));
   try{
     const r = await authFetch(`${API}/generate-simple`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,patrones,contextVideos:ctx})});
     const d = await r.json();
@@ -880,7 +880,7 @@ async function generateCopy(){
   const videos=await DB.getVideos();
   if(!videos.length){document.getElementById('gen-results').innerHTML='<div class="empty-state">Necesitás al menos un video analizado.</div>';document.getElementById('btn-generate').disabled=false;return}
   const[glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
-  const ctx=videos.slice(0,6).map(v=>({views:v.views,likes:v.likes,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,300)}));
+  const ctx=videos.map(v=>({views:v.views,likes:v.likes,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,300)}));
   try{
     const r=await authFetch(`${API}/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,patrones,contextVideos:ctx})});
     const d=await r.json();
