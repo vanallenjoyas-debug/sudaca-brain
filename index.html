@@ -857,6 +857,7 @@ async function generateFrasesNew(){
     const raw = d.copy || d.error || '';
     const lineas = raw.split('\n').filter(l=>l.trim().match(/^\d+\./));
     const proceso = desc;
+    window._frasesActuales = { proceso, lineas };
     document.getElementById('gen-results').innerHTML = `
       <div class="copy-result flash">
         <div class="copy-score" style="color:#10b981;">✨</div>
@@ -864,7 +865,7 @@ async function generateFrasesNew(){
         ${lineas.length > 0
           ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
               <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
-              <button onclick="aprobarFrase(${JSON.stringify(l.replace(/^\d+\.\s*/,'').trim())}, ${JSON.stringify(proceso)}, this)" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
+              <button id="fbtn-${i}" onclick="aprobarFraseIdx(${i})" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
             </div>`).join('')
           : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
         }
@@ -890,6 +891,7 @@ async function generateFrases(){
     const raw = d.copy || d.error || '';
     const lineas = raw.split('\n').filter(l=>l.trim().match(/^\d+\./));
     const proceso = desc;
+    window._frasesActuales = { proceso, lineas };
     document.getElementById('gen-results').innerHTML = `
       <div class="copy-result flash">
         <div class="copy-score" style="color:#a855f7;">💬</div>
@@ -897,7 +899,7 @@ async function generateFrases(){
         ${lineas.length > 0 
           ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
               <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
-              <button onclick="aprobarFrase(${JSON.stringify(l.replace(/^\d+\.\s*/,'').trim())}, ${JSON.stringify(proceso)}, this)" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
+              <button id="fbtn-${i}" onclick="aprobarFraseIdx(${i})" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
             </div>`).join('')
           : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
         }
@@ -1068,6 +1070,18 @@ async function deleteFrase(id){
   await DB.deleteFrase(id);
   document.getElementById(`frase-${id}`)?.remove();
   await renderFrasesDB();
+}
+
+async function aprobarFraseIdx(i){
+  const btn = document.getElementById(`fbtn-${i}`);
+  if(!btn || !window._frasesActuales) return;
+  btn.disabled=true;
+  const frase = window._frasesActuales.lineas[i].replace(/^\d+\.\s*/,'').trim();
+  const proceso = window._frasesActuales.proceso;
+  await DB.aprobarFrase(proceso, frase);
+  btn.textContent='✓';
+  btn.style.color='var(--success)';
+  btn.style.borderColor='var(--success)';
 }
 
 async function aprobarFrase(frase, proceso, btn){
