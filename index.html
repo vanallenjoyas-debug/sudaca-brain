@@ -312,6 +312,31 @@ textarea.input-field{resize:vertical;min-height:80px}
   </div>
 </div>
 
+<!-- BORRADOR FLOTANTE -->
+<div id="borrador-panel" style="position:fixed;bottom:20px;right:20px;width:320px;background:var(--card);border:1px solid var(--accent);z-index:1000;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.5);resize:both;overflow:auto;min-width:220px;min-height:180px;max-width:500px;">
+  <div id="borrador-header" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #333;cursor:move;background:var(--bg);">
+    <span style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);">📝 BORRADOR</span>
+    <div style="display:flex;gap:6px;">
+      <button onclick="toggleBorrador()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;" title="Minimizar">−</button>
+      <button onclick="document.getElementById('borrador-panel').style.display='none'" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;" title="Cerrar">✕</button>
+    </div>
+  </div>
+  <div id="borrador-body" style="display:flex;flex-direction:column;flex:1;padding:10px;gap:8px;">
+    <textarea id="borrador-text" placeholder="Pegá las frases que te gustan, ordenalas, armá el copy..." style="flex:1;min-height:150px;background:#111;border:1px solid #333;color:var(--text-mid);padding:10px;font-size:11px;line-height:1.6;resize:none;font-family:monospace;"></textarea>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="font-size:10px;padding:6px 12px;flex:1;" onclick="pulirCopy()">✨ PULIR COPY</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:6px 10px;" onclick="borrarBorrador()">🗑 BORRAR</button>
+      <button class="btn btn-ghost" style="font-size:10px;padding:6px 10px;" onclick="document.getElementById('borrador-panel').style.display='flex';">👁 MOSTRAR</button>
+    </div>
+    <div id="borrador-resultado" style="display:none;border-top:1px solid #333;padding-top:8px;">
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:6px;">COPY PULIDO</div>
+      <div id="borrador-resultado-text" style="font-size:11px;color:var(--text-mid);line-height:1.6;white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<button id="borrador-fab" onclick="document.getElementById('borrador-panel').style.display='flex'" style="display:none;position:fixed;bottom:20px;right:20px;background:var(--accent);border:none;color:#000;padding:10px 16px;font-size:11px;letter-spacing:1px;cursor:pointer;z-index:999;">📝 BORRADOR</button>
+
 <div class="screen" id="screen-ideas">
   <div class="section-title">IDEAS DE CONTENIDO</div>
   <div class="section-sub">Ideas generadas a partir de los comentarios de todos tus videos</div>
@@ -1026,6 +1051,77 @@ async function renderSidebar(){
   document.getElementById('patrones-list').innerHTML=p.length?p.slice(-6).map(x=>`<div class="patron-item">${x.substring(0,90)}${x.length>90?'...':''}</div>`).join(''):'<div style="font-size:11px;color:var(--text-dim);font-style:italic;">Emergen después de varios videos.</div>';
 }
 function updateStats(s){document.getElementById('stat-videos').textContent=s?.videos||0;document.getElementById('stat-glosario').textContent=s?.glosario||0;document.getElementById('stat-patrones').textContent=s?.patrones||0}
+
+// ---- BORRADOR ----
+function toggleBorrador(){
+  const body = document.getElementById('borrador-body');
+  const panel = document.getElementById('borrador-panel');
+  if(body.style.display === 'none'){
+    body.style.display = 'flex';
+    panel.style.height = 'auto';
+  } else {
+    body.style.display = 'none';
+    panel.style.height = 'auto';
+  }
+}
+
+function borrarBorrador(){
+  document.getElementById('borrador-text').value = '';
+  document.getElementById('borrador-resultado').style.display = 'none';
+  localStorage.removeItem('sb_borrador');
+}
+
+// Persist borrador in localStorage
+document.addEventListener('DOMContentLoaded', ()=>{
+  const saved = localStorage.getItem('sb_borrador');
+  if(saved) document.getElementById('borrador-text').value = saved;
+  document.getElementById('borrador-text').addEventListener('input', ()=>{
+    localStorage.setItem('sb_borrador', document.getElementById('borrador-text').value);
+  });
+
+  // Make borrador draggable
+  const panel = document.getElementById('borrador-panel');
+  const header = document.getElementById('borrador-header');
+  let isDragging = false, startX, startY, startLeft, startBottom;
+  header.addEventListener('mousedown', e=>{
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left;
+    startBottom = window.innerHeight - rect.bottom;
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    panel.style.left = (startLeft + dx) + 'px';
+    panel.style.bottom = (startBottom - dy) + 'px';
+    panel.style.right = 'auto';
+  });
+  document.addEventListener('mouseup', ()=>{ isDragging = false; });
+});
+
+async function pulirCopy(){
+  const borrador = document.getElementById('borrador-text').value.trim();
+  if(!borrador){ alert('El borrador está vacío'); return; }
+  const btn = document.querySelector('#borrador-panel .btn-primary');
+  btn.disabled = true;
+  btn.textContent = 'Puliendo...';
+  const videos = await DB.getVideos();
+  const [glosario] = await Promise.all([DB.getGlosario()]);
+  const ctx = videos.map(v=>({views:v.views,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,200)}));
+  try{
+    const r = await authFetch(`${API}/pulir-copy`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({borrador,glosario,contextVideos:ctx})});
+    const d = await r.json();
+    document.getElementById('borrador-resultado').style.display = 'block';
+    document.getElementById('borrador-resultado-text').textContent = d.copy || d.error;
+  }catch(err){
+    alert('Error: ' + err.message);
+  }
+  btn.disabled = false;
+  btn.textContent = '✨ PULIR COPY';
+}
 
 // ---- FRASES DB ----
 let currentFraseProceso = null;
