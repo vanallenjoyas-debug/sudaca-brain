@@ -244,30 +244,6 @@ textarea.input-field{resize:vertical;min-height:80px}
       <label class="input-label">¿De qué trata el video?</label>
       <textarea class="input-field" id="gen-desc" placeholder="Ej: voy a mostrar cómo refinar plata con ácido nítrico..." style="min-height:90px;"></textarea>
     </div>
-    <div class="row">
-      <div class="input-group">
-        <label class="input-label">Momento del proceso</label>
-        <select class="input-field" id="gen-momento">
-          <option value="">Seleccioná...</option>
-          <option value="proceso_quimico">Proceso químico / reacción</option>
-          <option value="fundicion">Fundición / fuego</option>
-          <option value="mecanico">Trabajo mecánico / herramientas</option>
-          <option value="resultado">Resultado final / pieza terminada</option>
-          <option value="tutorial">Tutorial paso a paso</option>
-          <option value="otro">Otro</option>
-        </select>
-      </div>
-      <div class="input-group">
-        <label class="input-label">Tono</label>
-        <select class="input-field" id="gen-tono">
-          <option value="auto">Que lo decida la IA</option>
-          <option value="sarcastico">Sarcástico / irónico</option>
-          <option value="dramatico">Dramático / épico</option>
-          <option value="didactico">Didáctico con humor</option>
-          <option value="mistico">Místico / esotérico</option>
-        </select>
-      </div>
-    </div>
     <button class="btn btn-primary" onclick="generateCopy()" id="btn-generate">GENERAR OPCIONES</button>
   </div>
 
@@ -839,7 +815,7 @@ async function generateCopy(){
   const[glosario,patrones]=await Promise.all([DB.getGlosario(),DB.getPatrones()]);
   const ctx=videos.slice(0,6).map(v=>({views:v.views,likes:v.likes,title:v.title,copy_original:v.copy_original||'',analysis:(v.analysis||'').substring(0,300)}));
   try{
-    const r=await authFetch(`${API}/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,momento:document.getElementById('gen-momento').value,tono:document.getElementById('gen-tono').value,glosario,patrones,contextVideos:ctx})});
+    const r=await authFetch(`${API}/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({description:desc,glosario,patrones,contextVideos:ctx})});
     const d=await r.json();
     const opts=(d.copy||d.error||'').split(/OPCIÓN_\d+:/g).filter(s=>s.trim());
     document.getElementById('gen-results').innerHTML=opts.length?opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join(''):`<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
