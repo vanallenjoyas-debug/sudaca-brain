@@ -906,9 +906,7 @@ async function generateFrasesNew(){
     const proceso = desc;
     window._frasesActuales = { proceso, lineas };
     document.getElementById('gen-results').innerHTML = `
-      <div class="copy-result flash">
-        <div class="copy-score" style="color:#10b981;">✨</div>
-        <div class="copy-label">FRASES NUEVAS PARA: ${desc}</div>
+      <div class="copy-result flash" data-proceso="${desc}">
         ${lineas.length > 0
           ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
               <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
@@ -940,7 +938,7 @@ async function generateFrases(){
     const proceso = desc;
     window._frasesActuales = { proceso, lineas };
     document.getElementById('gen-results').innerHTML = `
-      <div class="copy-result flash">
+      <div class="copy-result flash" data-proceso="${desc}">
         <div class="copy-score" style="color:#a855f7;">💬</div>
         <div class="copy-label">FRASES PARA: ${desc}</div>
         ${lineas.length > 0 
@@ -1200,12 +1198,16 @@ async function aprobarFraseIdx(i){
   if(!span){ btn.disabled=false; return; }
   const frase = span.textContent.replace(/^\d+\.\s*/,'').trim();
 
-  // Get proceso - try window object first, then localStorage
+  // Get proceso from closest container with data-proceso
   let proceso = null;
   if(window._frasesActuales) proceso = window._frasesActuales.proceso;
   if(!proceso){
     const saved = localStorage.getItem('sb_frases_actuales');
     if(saved) proceso = JSON.parse(saved).proceso;
+  }
+  if(!proceso){
+    const container = btn.closest('[data-proceso]');
+    if(container) proceso = container.getAttribute('data-proceso');
   }
   if(!proceso){ btn.disabled=false; alert('No se encontró el proceso'); return; }
 
