@@ -1191,15 +1191,24 @@ async function deleteFrase(id){
 }
 
 async function aprobarFraseIdx(i){
-  console.log('aprobarFraseIdx called', i, window._frasesActuales);
   const btn = document.getElementById(`fbtn-${i}`);
-  if(!btn || !window._frasesActuales) {
-    console.log('Missing btn or _frasesActuales:', btn, window._frasesActuales);
-    return;
-  }
+  if(!btn) return;
   btn.disabled=true;
-  const frase = window._frasesActuales.lineas[i].replace(/^\d+\.\s*/,'').trim();
-  const proceso = window._frasesActuales.proceso;
+
+  // Get frase from DOM span sibling
+  const span = btn.parentElement.querySelector('span');
+  if(!span){ btn.disabled=false; return; }
+  const frase = span.textContent.replace(/^\d+\.\s*/,'').trim();
+
+  // Get proceso - try window object first, then localStorage
+  let proceso = null;
+  if(window._frasesActuales) proceso = window._frasesActuales.proceso;
+  if(!proceso){
+    const saved = localStorage.getItem('sb_frases_actuales');
+    if(saved) proceso = JSON.parse(saved).proceso;
+  }
+  if(!proceso){ btn.disabled=false; alert('No se encontró el proceso'); return; }
+
   await DB.aprobarFrase(proceso, frase);
   btn.textContent='✓';
   btn.style.color='var(--success)';
