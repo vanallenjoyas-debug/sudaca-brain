@@ -844,6 +844,7 @@ function setGenMode(mode, btn){
   document.getElementById('gen-gemini-mode').style.display = mode==='gemini' ? 'block' : 'none';
   document.getElementById('gen-frases-mode').style.display = mode==='frases' ? 'block' : 'none';
   document.getElementById('gen-frases-new-mode').style.display = mode==='frases-new' ? 'block' : 'none';
+  restoreGenResults(mode);
 }
 
 function handleGenFile(input){
@@ -856,23 +857,28 @@ function handleGenFile(input){
   }
 }
 
-function saveGenResults(){
+function saveGenResults(mode){
   const el = document.getElementById('gen-results');
   const bar = document.getElementById('gen-clear-bar');
-  if(el && el.innerHTML.trim()){
-    localStorage.setItem('sb_gen_results', el.innerHTML);
-    localStorage.setItem('sb_gen_bar', bar.style.display);
-    if(window._frasesActuales) localStorage.setItem('sb_frases_actuales', JSON.stringify(window._frasesActuales));
+  if(el && el.innerHTML.trim() && mode){
+    localStorage.setItem('sb_gen_results_'+mode, el.innerHTML);
+    if(window._frasesActuales) localStorage.setItem('sb_frases_actuales_'+mode, JSON.stringify(window._frasesActuales));
   }
 }
 
-function restoreGenResults(){
-  const saved = localStorage.getItem('sb_gen_results');
+let currentGenMode = 'text';
+
+function restoreGenResults(mode){
+  currentGenMode = mode || 'text';
+  const saved = localStorage.getItem('sb_gen_results_'+mode);
   if(saved){
     document.getElementById('gen-results').innerHTML = saved;
-    document.getElementById('gen-clear-bar').style.display = localStorage.getItem('sb_gen_bar') || 'block';
-    const frases = localStorage.getItem('sb_frases_actuales');
+    document.getElementById('gen-clear-bar').style.display = 'block';
+    const frases = localStorage.getItem('sb_frases_actuales_'+mode);
     if(frases) window._frasesActuales = JSON.parse(frases);
+  } else {
+    document.getElementById('gen-results').innerHTML = '';
+    document.getElementById('gen-clear-bar').style.display = 'none';
   }
 }
 
@@ -886,8 +892,8 @@ function clearGenerator(){
   document.getElementById('gen-drop-zone').style.borderColor='';
   document.getElementById('gen-video-file').value='';
   document.getElementById('gen-desc').value='';
-  localStorage.removeItem('sb_gen_results');
-  localStorage.removeItem('sb_frases_actuales');
+  localStorage.removeItem('sb_gen_results_'+currentGenMode);
+  localStorage.removeItem('sb_frases_actuales_'+currentGenMode);
 }
 
 async function generateFrasesNew(){
@@ -915,7 +921,7 @@ async function generateFrasesNew(){
           : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
         }
       </div>`;
-    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults();
+    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults('frases-new');
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
   }
@@ -949,7 +955,7 @@ async function generateFrases(){
           : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
         }
       </div>`;
-    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults();
+    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults('frases');
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
   }
@@ -973,7 +979,7 @@ async function generateGeminiMode(){
     if(opts.length < 2) opts = raw.split(/\n\n(?=Opción|\*\*Opción|Opcion|[1-3]\.|[1-3]\))/i).filter(s=>s.trim().length>20);
     if(opts.length < 2) opts = [raw]; // fallback: show as one
     document.getElementById('gen-results').innerHTML = opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('');
-    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults();
+    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults('gemini');
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
   }
@@ -995,7 +1001,7 @@ async function generateSimple(){
     document.getElementById('gen-results').innerHTML = opts.length > 1
       ? opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('')
       : `<div class="copy-result flash"><div class="copy-text">${(d.copy||d.error||'').replace(/\n/g,'<br>')}</div></div>`;
-    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults();
+    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults('simple');
   }catch(err){
     document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
   }
@@ -1023,7 +1029,7 @@ async function generateCopyWithVideo(){
     document.getElementById('gen-results').innerHTML = opts.length
       ? opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join('')
       : `<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
-    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults();
+    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults('video');
   }catch(err){
     document.getElementById('gen-results').innerHTML = `<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`;
   }
@@ -1044,7 +1050,7 @@ async function generateCopy(){
     const d=await r.json();
     const opts=(d.copy||d.error||'').split(/OPCIÓN_\d+:/g).filter(s=>s.trim());
     document.getElementById('gen-results').innerHTML=opts.length?opts.map((o,i)=>`<div class="copy-result flash"><div class="copy-score">${['★','◆','●'][i]||'•'}</div><div class="copy-label">OPCIÓN ${i+1}</div><div class="copy-text">${o.trim().replace(/\n/g,'<br>')}</div></div>`).join(''):`<div class="copy-result flash"><div class="copy-text">${d.copy||d.error}</div></div>`;
-    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults();
+    document.getElementById('gen-clear-bar').style.display='block'; saveGenResults('text');
   }catch(err){document.getElementById('gen-results').innerHTML=`<div style="color:var(--accent);font-size:12px;">Error: ${err.message}</div>`}
   document.getElementById('btn-generate').disabled=false;
 }
@@ -1285,7 +1291,7 @@ function showScreen(name,btn){
   if(btn)btn.classList.add('active');
   if(name==='library')renderLibrary();
   if(name==='generator'||name==='ideas')renderSidebar();
-  if(name==='generator')restoreGenResults();
+  if(name==='generator')restoreGenResults(currentGenMode);
   if(name==='glosario')renderGlosarioScreen();
   if(name==='frases-db')renderFrasesDB();
 }
