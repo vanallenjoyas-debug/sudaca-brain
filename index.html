@@ -862,6 +862,7 @@ function saveGenResults(){
   if(el && el.innerHTML.trim()){
     localStorage.setItem('sb_gen_results', el.innerHTML);
     localStorage.setItem('sb_gen_bar', bar.style.display);
+    if(window._frasesActuales) localStorage.setItem('sb_frases_actuales', JSON.stringify(window._frasesActuales));
   }
 }
 
@@ -870,6 +871,8 @@ function restoreGenResults(){
   if(saved){
     document.getElementById('gen-results').innerHTML = saved;
     document.getElementById('gen-clear-bar').style.display = localStorage.getItem('sb_gen_bar') || 'block';
+    const frases = localStorage.getItem('sb_frases_actuales');
+    if(frases) window._frasesActuales = JSON.parse(frases);
   }
 }
 
@@ -884,6 +887,7 @@ function clearGenerator(){
   document.getElementById('gen-video-file').value='';
   document.getElementById('gen-desc').value='';
   localStorage.removeItem('sb_gen_results');
+  localStorage.removeItem('sb_frases_actuales');
 }
 
 async function generateFrasesNew(){
