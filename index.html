@@ -152,6 +152,7 @@ textarea.input-field{resize:vertical;min-height:80px}
     <button class="nav-tab" onclick="showScreen('ideas',this)">Ideas</button>
     <button class="nav-tab" onclick="showScreen('glosario',this)">Glosario</button>
     <button class="nav-tab" onclick="showScreen('frases-db',this)">Frases</button>
+    <button class="nav-tab" onclick="showScreen('armar-copy',this)">Armar Copy</button>
     <button class="nav-tab" onclick="logout()" style="margin-left:8px;border-color:#333;">Salir</button>
   </div>
 </header>
@@ -357,7 +358,24 @@ textarea.input-field{resize:vertical;min-height:80px}
   </div>
 </div>
 
-<div class="screen" id="screen-glosario">
+<div class="screen" id="screen-armar-copy">
+  <div class="section-title">ARMAR COPY</div>
+  <div class="section-sub">Pegá las frases que elegiste y describí el video. Gemini arma el copy con tu voz.</div>
+  <div class="input-group" style="margin-top:20px;">
+    <label class="input-label">¿Sobre qué trata el video?</label>
+    <textarea class="input-field" id="armar-contexto" placeholder="Ej: voy a fundir plata que me regaló una seguidora..." style="min-height:60px;"></textarea>
+  </div>
+  <div class="input-group">
+    <label class="input-label">Frases que querés usar</label>
+    <textarea class="input-field" id="armar-frases" placeholder="Pegá acá las frases que elegiste, una por línea..." style="min-height:180px;font-family:monospace;font-size:11px;line-height:1.6;"></textarea>
+  </div>
+  <button class="btn btn-primary" onclick="armarCopy()" id="btn-armar" style="width:100%;">⚡ ARMAR COPY</button>
+  <div id="armar-resultado" style="display:none;margin-top:20px;">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">COPY ARMADO</div>
+    <div id="armar-resultado-text" style="font-size:13px;color:var(--text-mid);line-height:1.8;white-space:pre-wrap;padding:16px;border:1px solid #333;background:#111;"></div>
+    <button class="btn btn-ghost" style="margin-top:10px;font-size:10px;" onclick="armarCopy()">↺ VOLVER A ARMAR</button>
+  </div>
+</div>
   <div class="section-title">GLOSARIO APRENDIDO</div>
   <div class="section-sub">Términos que la IA aprendió de tus videos. Borrá los que no sirven.</div>
   <div id="glosario-screen-list"></div>
@@ -1080,6 +1098,34 @@ async function renderSidebar(){
 }
 function updateStats(s){document.getElementById('stat-videos').textContent=s?.videos||0;document.getElementById('stat-glosario').textContent=s?.glosario||0;document.getElementById('stat-patrones').textContent=s?.patrones||0}
 
+// ---- ARMAR COPY ----
+async function armarCopy(){
+  const contexto = document.getElementById('armar-contexto').value.trim();
+  const frases = document.getElementById('armar-frases').value.trim();
+  if(!frases){ alert('Pegá las frases primero'); return; }
+  if(!contexto){ alert('Describí de qué trata el video'); return; }
+
+  const btn = document.getElementById('btn-armar');
+  btn.disabled = true;
+  btn.textContent = 'Armando...';
+
+  const videos = await DB.getVideos();
+  const [glosario] = await Promise.all([DB.getGlosario()]);
+  const ctx = videos.filter(v=>v.copy_original).map(v=>v.copy_original).slice(0,6).join('\n---\n');
+
+  try{
+    const r = await authFetch(`${API}/armar-copy`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contexto, frases, copysReales:ctx, glosario})});
+    const d = await r.json();
+    document.getElementById('armar-resultado').style.display='block';
+    document.getElementById('armar-resultado-text').textContent = d.copy || d.error;
+    document.getElementById('armar-resultado').scrollIntoView({behavior:'smooth'});
+  }catch(err){
+    alert('Error: ' + err.message);
+  }
+  btn.disabled = false;
+  btn.textContent = '⚡ ARMAR COPY';
+}
+
 // ---- BORRADOR ----
 function toggleBorrador(){
   const body = document.getElementById('borrador-body');
@@ -1296,6 +1342,7 @@ function showScreen(name,btn){
   if(name==='generator')restoreGenResults(currentGenMode);
   if(name==='glosario')renderGlosarioScreen();
   if(name==='frases-db')renderFrasesDB();
+  if(name==='armar-copy'){}
 }
 
 // ---- UTILS ----
