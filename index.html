@@ -910,7 +910,7 @@ async function generateFrasesNew(){
         ${lineas.length > 0
           ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
               <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
-              <button id="fbtn-${i}" onclick="aprobarFraseIdx(${i})" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
+              <button id="fbtn-${i}" data-proceso="${desc}" onclick="aprobarFraseIdx(${i})" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
             </div>`).join('')
           : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
         }
@@ -944,7 +944,7 @@ async function generateFrases(){
         ${lineas.length > 0 
           ? lineas.map((l,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #333;">
               <span style="color:var(--text-mid);font-size:12px;flex:1;">${l.trim()}</span>
-              <button id="fbtn-${i}" onclick="aprobarFraseIdx(${i})" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
+              <button id="fbtn-${i}" data-proceso="${desc}" onclick="aprobarFraseIdx(${i})" style="background:none;border:1px solid var(--success);color:var(--success);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0;">✓ GUARDAR</button>
             </div>`).join('')
           : `<div class="copy-text" style="white-space:pre-wrap;">${raw.replace(/\n/g,'<br>')}</div>`
         }
@@ -1198,9 +1198,9 @@ async function aprobarFraseIdx(i){
   if(!span){ btn.disabled=false; return; }
   const frase = span.textContent.replace(/^\d+\.\s*/,'').trim();
 
-  // Get proceso from closest container with data-proceso
-  let proceso = null;
-  if(window._frasesActuales) proceso = window._frasesActuales.proceso;
+  // Get proceso - read from button's own data-proceso attribute (persists in localStorage HTML)
+  let proceso = btn.getAttribute('data-proceso');
+  if(!proceso && window._frasesActuales) proceso = window._frasesActuales.proceso;
   if(!proceso){
     const saved = localStorage.getItem('sb_frases_actuales');
     if(saved) proceso = JSON.parse(saved).proceso;
